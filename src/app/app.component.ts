@@ -10,20 +10,17 @@ export class AppComponent implements AfterViewInit {
   ctx: any;
   canvas: any;
   TILE_SIZE = 32;
-  MAP_WIDTH = 10;
-  MAP_HEIGHT = 10;
+  MAP_WIDTH = 30; // ⬆ AUMENTA O MAPA
+  MAP_HEIGHT = 30;
   player = {
-    x: 5,
-    y: 5,
+    x: 15, // Posição inicial centralizada
+    y: 15,
     color: "blue",
     health: 10,
-    maxHealth: 10
+    maxHealth: 10,
+    gold: 0 // 🏆 Nova variável para armazenar recompensas
   };
-
-  monsters = [
-    { x: 3, y: 3, color: "red", health: 5, maxHealth: 5, damage: 1 },
-    { x: 7, y: 6, color: "red", health: 5, maxHealth: 5, damage: 1 }
-  ];
+  monsters = this.generateMonsters(15); // 🦇 Gera 15 monstros aleatórios pelo mapa
   selectedMonster: any = null;
   turn = 0;
 
@@ -34,6 +31,7 @@ export class AppComponent implements AfterViewInit {
     this.canvas.height = this.TILE_SIZE * this.MAP_HEIGHT;
 
     document.addEventListener("keydown", (event) => {
+      console.log(event)
       switch (event.key) {
         case "ArrowUp":
         case "w":
@@ -51,6 +49,9 @@ export class AppComponent implements AfterViewInit {
         case "d":
           this.movePlayer(1, 0);
           break;
+        case " ":
+          this.attack()
+          break;
       }
     });
 
@@ -64,6 +65,20 @@ export class AppComponent implements AfterViewInit {
     });
 
     this.update();
+  }
+
+  generateMonsters(count: number) {
+    let monsters = [];
+    for (let i = 0; i < count; i++) {
+      let x, y;
+      do {
+        x = Math.floor(Math.random() * this.MAP_WIDTH);
+        y = Math.floor(Math.random() * this.MAP_HEIGHT);
+      } while ((x === this.player.x && y === this.player.y) || this.isOccupied(x, y));
+
+      monsters.push({ x, y, color: "red", health: 5, maxHealth: 5, damage: 1, reward: 2 });
+    }
+    return monsters;
   }
 
   drawGrid() {
@@ -88,28 +103,22 @@ export class AppComponent implements AfterViewInit {
     }
   }
 
-  drawHealthBar(x: number, y: number, health: number, maxHealth: number, isPlayer: boolean = false) {
+  drawHealthBar(x: number, y: number, health: number, maxHealth: number) {
     const healthRatio = health / maxHealth;
     const barWidth = this.TILE_SIZE * healthRatio;
 
-    if (isPlayer) {
-      this.ctx.fillStyle = "red";
-      this.ctx.fillRect(x * this.TILE_SIZE, (y * this.TILE_SIZE) - 8, this.TILE_SIZE, 6);
-      this.ctx.fillStyle = "green";
-      this.ctx.fillRect(x * this.TILE_SIZE, (y * this.TILE_SIZE) - 8, barWidth, 6);
-    } else {
-      this.ctx.fillStyle = "red";
-      this.ctx.fillRect(x * this.TILE_SIZE, (y * this.TILE_SIZE) - 5, this.TILE_SIZE, 4);
-      this.ctx.fillStyle = "green";
-      this.ctx.fillRect(x * this.TILE_SIZE, (y * this.TILE_SIZE) - 5, barWidth, 4);
-    }
+    this.ctx.fillStyle = "red";
+    this.ctx.fillRect(x * this.TILE_SIZE, (y * this.TILE_SIZE) - 5, this.TILE_SIZE, 4);
+
+    this.ctx.fillStyle = "green";
+    this.ctx.fillRect(x * this.TILE_SIZE, (y * this.TILE_SIZE) - 5, barWidth, 4);
   }
 
   update() {
     this.drawGrid();
     this.drawPlayer();
     this.drawMonsters();
-    this.drawHealthBar(this.player.x, this.player.y, this.player.health, this.player.maxHealth, true);
+    this.drawHealthBar(this.player.x, this.player.y, this.player.health, this.player.maxHealth);
 
     for (let monster of this.monsters) {
       this.drawHealthBar(monster.x, monster.y, monster.health, monster.maxHealth);
@@ -120,42 +129,38 @@ export class AppComponent implements AfterViewInit {
     let newX = this.player.x + dx;
     let newY = this.player.y + dy;
 
-    if (!this.isWithinBounds(newX, newY) || this.isOccupied(newX, newY)) return;
 
-    this.player.x = newX;
-    this.player.y = newY;
+    if (!this.isWithinBounds(newX, newY) || this.isOccupied(newX, newY)) {
+
+    } else {
+      this.player.x = newX;
+      this.player.y = newY;
+    }
+    this.autoAttack();
     this.turn++;
     this.monsterTurn();
-    this.autoAttack();
     this.update();
   }
 
   isOccupied(x: number, y: number) {
-    return this.monsters.some(m => m.x === x && m.y === y);
+    return this.monsters?.some(m => m.x === x && m.y === y);
   }
 
   autoAttack() {
     let targets = this.monsters.filter(m => Math.abs(m.x - this.player.x) + Math.abs(m.y - this.player.y) === 1);
     if (targets.length > 0) {
       let target = this.selectedMonster && targets.includes(this.selectedMonster) ? this.selectedMonster : targets[0];
-      target.health -= 2;
-      if (target.health <= 0) {
-        this.monsters = this.monsters.filter(m => m !== target);
-        if (this.selectedMonster === target) {
-          this.selectedMonster = null;
-        }
-      }
+      this.attackMonster(target);
     }
   }
 
   attack() {
-    if (this.selectedMonster) {
-      this.selectedMonster.health -= 2;
-      if (this.selectedMonster.health <= 0) {
-        this.monsters = this.monsters.filter(m => m !== this.selectedMonster);
-        this.selectedMonster = null;
-      }
+    let target = this.selectedMonster || this.monsters.find(m => Math.abs(m.x - this.player.x) + Math.abs(m.y - this.player.y) === 1);
+
+    if (target) {
+      this.attackMonster(target);
     }
+
     this.turn++;
     this.monsterTurn();
     this.update();
@@ -196,7 +201,17 @@ export class AppComponent implements AfterViewInit {
     }
   }
 
-
+  attackMonster(target: any) {
+    target.health -= 2;
+    if (target.health <= 0) {
+      this.player.health = Math.min(this.player.health + 2, this.player.maxHealth); // 💚 Recupera vida ao matar
+      this.player.gold += target.reward; // 🏆 Ganha ouro
+      this.monsters = this.monsters.filter(m => m !== target);
+      if (this.selectedMonster === target) {
+        this.selectedMonster = null;
+      }
+    }
+  }
 
   isWithinBounds(x: number, y: number) {
     return x >= 0 && x < this.MAP_WIDTH && y >= 0 && y < this.MAP_HEIGHT;

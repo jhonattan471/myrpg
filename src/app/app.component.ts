@@ -20,7 +20,7 @@ export class AppComponent implements AfterViewInit {
     maxHealth: 10,
     gold: 0 // 🏆 Nova variável para armazenar recompensas
   };
-  monsters = this.generateMonsters(15); // 🦇 Gera 15 monstros aleatórios pelo mapa
+  monsters = this.generateMonsters(10); // 🦇 Gera 15 monstros aleatórios pelo mapa
   selectedMonster: any = null;
   turn = 0;
 
@@ -129,8 +129,12 @@ export class AppComponent implements AfterViewInit {
     let newX = this.player.x + dx;
     let newY = this.player.y + dy;
 
+    const objetoNaPosicao = this.isOccupied(newX, newY)
+    if (objetoNaPosicao) {
+      this.selectedMonster = objetoNaPosicao
+    }
 
-    if (!this.isWithinBounds(newX, newY) || this.isOccupied(newX, newY)) {
+    if (!this.isWithinBounds(newX, newY) || objetoNaPosicao) {
 
     } else {
       this.player.x = newX;
@@ -143,7 +147,7 @@ export class AppComponent implements AfterViewInit {
   }
 
   isOccupied(x: number, y: number) {
-    return this.monsters?.some(m => m.x === x && m.y === y);
+    return this.monsters?.find(m => m.x === x && m.y === y);
   }
 
   autoAttack() {
@@ -175,7 +179,6 @@ export class AppComponent implements AfterViewInit {
       if (Math.abs(dx) + Math.abs(dy) === 1) {
         this.player.health -= monster.damage;
         if (this.player.health <= 0) {
-          alert("Você morreu! Game Over.");
           location.reload();
         }
       } else {

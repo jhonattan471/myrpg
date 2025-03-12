@@ -10,17 +10,19 @@ export class AppComponent implements AfterViewInit {
   ctx: any;
   canvas: any;
   TILE_SIZE = 32;
-  MAP_WIDTH = 30; // ⬆ AUMENTA O MAPA
-  MAP_HEIGHT = 30;
+  MAP_WIDTH = 25;
+  MAP_HEIGHT = 25;
+  monsterLevel = 1; // 📈 Novo sistema de nível de monstros
   player = {
-    x: 15, // Posição inicial centralizada
+    x: 15,
     y: 15,
     color: "blue",
     health: 10,
     maxHealth: 10,
-    gold: 0 // 🏆 Nova variável para armazenar recompensas
+    gold: 0,
+    damage: 2 // 💪 Novo atributo de dano do jogador
   };
-  monsters = this.generateMonsters(10); // 🦇 Gera 15 monstros aleatórios pelo mapa
+  monsters = this.generateMonsters(10);
   selectedMonster: any = null;
   turn = 0;
 
@@ -31,7 +33,6 @@ export class AppComponent implements AfterViewInit {
     this.canvas.height = this.TILE_SIZE * this.MAP_HEIGHT;
 
     document.addEventListener("keydown", (event) => {
-      console.log(event)
       switch (event.key) {
         case "ArrowUp":
         case "w":
@@ -50,7 +51,7 @@ export class AppComponent implements AfterViewInit {
           this.movePlayer(1, 0);
           break;
         case " ":
-          this.attack()
+          this.attack();
           break;
       }
     });
@@ -76,9 +77,29 @@ export class AppComponent implements AfterViewInit {
         y = Math.floor(Math.random() * this.MAP_HEIGHT);
       } while ((x === this.player.x && y === this.player.y) || this.isOccupied(x, y));
 
-      monsters.push({ x, y, color: "red", health: 5, maxHealth: 5, damage: 1, reward: 2 });
+      // 🦇 Monstros ficam mais fortes a cada nova onda
+      monsters.push({
+        x,
+        y,
+        color: "red",
+        health: 5 + this.monsterLevel,
+        maxHealth: 5 + this.monsterLevel,
+        damage: 1 + Math.floor(this.monsterLevel / 2),
+        reward: 2 + this.monsterLevel
+      });
     }
     return monsters;
+  }
+
+  drawHUD() {
+    this.ctx.fillStyle = "black"; // Cor do fundo do HUD
+    this.ctx.fillRect(0, 0, this.canvas.width, 30); // Desenha um fundo na parte superior
+
+    this.ctx.fillStyle = "white"; // Cor do texto
+    this.ctx.font = "16px Arial"; // Define a fonte para o texto ser visível
+
+    // Exibe vida, ouro e dano no topo do jogo
+    this.ctx.fillText(`Vida: ${this.player.health}/${this.player.maxHealth}  |  Ouro: ${this.player.gold}  |  Dano: ${this.player.damage}`, 10, 20);
   }
 
   drawGrid() {
@@ -123,6 +144,7 @@ export class AppComponent implements AfterViewInit {
     for (let monster of this.monsters) {
       this.drawHealthBar(monster.x, monster.y, monster.health, monster.maxHealth);
     }
+    this.drawHUD();
   }
 
   movePlayer(dx: number, dy: number) {
@@ -205,18 +227,55 @@ export class AppComponent implements AfterViewInit {
   }
 
   attackMonster(target: any) {
-    target.health -= 2;
+    target.health -= this.player.damage;
     if (target.health <= 0) {
-      this.player.health = Math.min(this.player.health + 2, this.player.maxHealth); // 💚 Recupera vida ao matar
-      this.player.gold += target.reward; // 🏆 Ganha ouro
+      this.player.health = Math.min(this.player.health + 2, this.player.maxHealth);
+      this.player.gold += target.reward;
       this.monsters = this.monsters.filter(m => m !== target);
       if (this.selectedMonster === target) {
         this.selectedMonster = null;
       }
     }
+
+    if (this.monsters.length === 0) {
+      this.monsterLevel++; // 📈 Aumenta o nível dos monstros
+      this.monsters = this.generateMonsters(10); // 🦇 Gera novos monstros mais fortes
+    }
+  }
+
+  openShop() {
+    if (this.player.gold >= 5) {
+      this.player.maxHealth += 2;
+      this.player.gold -= 5;
+    }
+    if (this.player.gold >= 3) {
+      this.player.damage += 1;
+      this.player.gold -= 3;
+    }
+    this.update();
   }
 
   isWithinBounds(x: number, y: number) {
     return x >= 0 && x < this.MAP_WIDTH && y >= 0 && y < this.MAP_HEIGHT;
+  }
+
+  shopMaisVida(vida: number) {
+    const newHealth = this.player.health + vida
+    this.player.health = Math.min(newHealth, this.player.maxHealth)
+    this.afterShop()
+  }
+
+  shopMaisVidaMaxima(qtd: number) {
+    this.player.maxHealth += qtd
+    this.afterShop()
+  }
+
+  shopMaisDano(qtd: number) {
+    this.player.damage += qtd
+    this.afterShop()
+  }
+
+  afterShop() {
+    this.update()
   }
 }

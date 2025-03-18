@@ -10,27 +10,33 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 })
 export class AppComponent implements AfterViewInit {
 
-  scene
-  camera
-  renderer
-  player
+  scene;
+  camera;
+  renderer;
+  player;
   controls;
   enemies: any[] = [];
-  sword
+  sword;
   shield;
   enemySpawnInterval;
+  playerSpeed = 0.3;
+  playerHealth = 100;
+  enemySpeed = 0.02;
+  enemyDamage = 10;
+  keys = {};
 
   ngAfterViewInit() {
-    console.log("init")
-    this.init()
-    console.log("animate")
-    this.animate()
+    this.init();
+    this.animate();
 
     window.addEventListener("resize", () => {
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(window.innerWidth, window.innerHeight);
     });
+
+    document.addEventListener('keydown', (event) => this.keys[event.key] = true);
+    document.addEventListener('keyup', (event) => this.keys[event.key] = false);
   }
 
   init() {
@@ -68,8 +74,6 @@ export class AppComponent implements AfterViewInit {
 
     this.spawnEnemies();
     this.enemySpawnInterval = setInterval(this.spawnEnemies.bind(this), 5000);
-
-    document.addEventListener('keydown', this.movePlayer.bind(this));
   }
 
   loadEquipment() {
@@ -78,34 +82,36 @@ export class AppComponent implements AfterViewInit {
     this.sword = new THREE.Mesh(swordGeometry, swordMaterial);
     this.sword.position.set(0.5, 1, 0);
     this.player.add(this.sword);
-
-    const shieldGeometry = new THREE.BoxGeometry(0.7, 1, 0.1);
-    const shieldMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
-    this.shield = new THREE.Mesh(shieldGeometry, shieldMaterial);
-    this.shield.position.set(-0.7, 1, 0);
-    this.player.add(this.shield);
   }
 
   spawnEnemies() {
-    if (!this.scene) return
+    if (!this.scene) return;
+
+    let position;
+    let isOverlapping;
+    do {
+      position = new THREE.Vector3(
+        Math.random() * 10 - 5,
+        1,
+        Math.random() * 10 - 5
+      );
+      isOverlapping = this.enemies.some(enemy => enemy.position.distanceTo(position) < 1.5);
+    } while (isOverlapping);
 
     const enemyGeometry = new THREE.BoxGeometry(1, 2, 1);
     const enemyMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
     const enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
-    enemy.position.set(Math.random() * 10 - 5, 1, Math.random() * 10 - 5);
+    enemy.position.copy(position);
     this.scene.add(enemy);
     this.enemies.push(enemy);
   }
 
-  movePlayer(event) {
-    if (!this.player) return
-    switch (event.key) {
-      case 'w': this.player.position.z -= 0.2; break;
-      case 's': this.player.position.z += 0.2; break;
-      case 'a': this.player.position.x -= 0.2; break;
-      case 'd': this.player.position.x += 0.2; break;
-      case ' ': this.attack(); break;
-    }
+  movePlayer() {
+    if (!this.player) return;
+    if (this.keys['w']) this.player.position.z -= this.playerSpeed;
+    if (this.keys['s']) this.player.position.z += this.playerSpeed;
+    if (this.keys['a']) this.player.position.x -= this.playerSpeed;
+    if (this.keys['d']) this.player.position.x += this.playerSpeed;
   }
 
   attack() {
@@ -119,7 +125,30 @@ export class AppComponent implements AfterViewInit {
 
   animate() {
     requestAnimationFrame(this.animate.bind(this));
+    this.movePlayer();
+    this.moveEnemies();
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
+  }
+
+  moveEnemies() {
+    for (let enemy of this.enemies) {
+      let direction = new THREE.Vector3().subVectors(this.player.position, enemy.position).normalize();
+      let newPosition = enemy.position.clone().add(direction.multiplyScalar(this.enemySpeed));
+
+      let collision = this.enemies.some(e => e !== enemy && e.position.distanceTo(newPosition) < 1.5);
+      if (!collision) {
+        enemy.position.copy(newPosition);
+      }
+
+      if (this.player.position.distanceTo(enemy.position) < 1.5) {
+        this.playerHealth -= this.enemyDamage;
+        console.log(`Vida do jogador: ${this.playerHealth}`);
+        if (this.playerHealth <= 0) {
+          console.log("Game Over!");
+          clearInterval(this.enemySpawnInterval);
+        }
+      }
+    }
   }
 }

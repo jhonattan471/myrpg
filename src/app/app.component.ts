@@ -1,4 +1,7 @@
 import { AfterViewInit, Component } from '@angular/core';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 @Component({
   selector: 'app-root',
@@ -6,276 +9,117 @@ import { AfterViewInit, Component } from '@angular/core';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements AfterViewInit {
-  title = 'myrpg';
-  ctx: any;
-  canvas: any;
-  TILE_SIZE = 32;
-  MAP_WIDTH = 25;
-  MAP_HEIGHT = 25;
-  monsterLevel = 1; // 📈 Novo sistema de nível de monstros
-  player = {
-    x: 15,
-    y: 15,
-    color: "blue",
-    health: 10,
-    maxHealth: 10,
-    gold: 0,
-    damage: 2 // 💪 Novo atributo de dano do jogador
-  };
-  monsters = this.generateMonsters(10);
-  selectedMonster: any = null;
-  turn = 0;
+
+  scene
+  camera
+  renderer
+  player
+  controls;
+  enemies: any[] = [];
+  sword
+  shield;
+  enemySpawnInterval;
 
   ngAfterViewInit() {
-    this.canvas = document.getElementById("gameCanvas") as HTMLCanvasElement;
-    this.ctx = this.canvas.getContext("2d");
-    this.canvas.width = this.TILE_SIZE * this.MAP_WIDTH;
-    this.canvas.height = this.TILE_SIZE * this.MAP_HEIGHT;
+    console.log("init")
+    this.init()
+    console.log("animate")
+    this.animate()
 
-    document.addEventListener("keydown", (event) => {
-      switch (event.key) {
-        case "ArrowUp":
-        case "w":
-          this.movePlayer(0, -1);
-          break;
-        case "ArrowDown":
-        case "s":
-          this.movePlayer(0, 1);
-          break;
-        case "ArrowLeft":
-        case "a":
-          this.movePlayer(-1, 0);
-          break;
-        case "ArrowRight":
-        case "d":
-          this.movePlayer(1, 0);
-          break;
-        case " ":
-          this.attack();
-          break;
-      }
+    window.addEventListener("resize", () => {
+      this.camera.aspect = window.innerWidth / window.innerHeight;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
     });
-
-    this.canvas.addEventListener("click", (event: any) => {
-      const rect = this.canvas.getBoundingClientRect();
-      const x = Math.floor((event.clientX - rect.left) / this.TILE_SIZE);
-      const y = Math.floor((event.clientY - rect.top) / this.TILE_SIZE);
-
-      this.selectedMonster = this.monsters.find(m => m.x === x && m.y === y) || null;
-      this.update();
-    });
-
-    this.update();
   }
 
-  generateMonsters(count: number) {
-    let monsters = [];
-    for (let i = 0; i < count; i++) {
-      let x, y;
-      do {
-        x = Math.floor(Math.random() * this.MAP_WIDTH);
-        y = Math.floor(Math.random() * this.MAP_HEIGHT);
-      } while ((x === this.player.x && y === this.player.y) || this.isOccupied(x, y));
+  init() {
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x87ceeb);
 
-      // 🦇 Monstros ficam mais fortes a cada nova onda
-      monsters.push({
-        x,
-        y,
-        color: "red",
-        health: 5 + this.monsterLevel,
-        maxHealth: 5 + this.monsterLevel,
-        damage: 1 + Math.floor(this.monsterLevel / 2),
-        reward: 2 + this.monsterLevel
-      });
-    }
-    return monsters;
+    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    this.camera.position.set(0, 5, 10);
+
+    this.renderer = new THREE.WebGLRenderer();
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(this.renderer.domElement);
+
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(5, 10, 5);
+    this.scene.add(light);
+
+    // Criando o chão
+    const groundGeometry = new THREE.PlaneGeometry(20, 20);
+    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    this.scene.add(ground);
+
+    // Criando o jogador
+    const playerGeometry = new THREE.BoxGeometry(1, 2, 1);
+    const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
+    this.player = new THREE.Mesh(playerGeometry, playerMaterial);
+    this.player.position.y = 1;
+    this.scene.add(this.player);
+
+    this.loadEquipment();
+
+    this.spawnEnemies();
+    this.enemySpawnInterval = setInterval(this.spawnEnemies, 5000);
+
+    document.addEventListener('keydown', this.movePlayer);
   }
 
-  drawHUD() {
-    this.ctx.fillStyle = "black"; // Cor do fundo do HUD
-    this.ctx.fillRect(0, 0, this.canvas.width, 30); // Desenha um fundo na parte superior
+  loadEquipment() {
+    const swordGeometry = new THREE.BoxGeometry(0.1, 1, 0.3);
+    const swordMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    this.sword = new THREE.Mesh(swordGeometry, swordMaterial);
+    this.sword.position.set(0.5, 1, 0);
+    this.player.add(this.sword);
 
-    this.ctx.fillStyle = "white"; // Cor do texto
-    this.ctx.font = "16px Arial"; // Define a fonte para o texto ser visível
-
-    // Exibe vida, ouro e dano no topo do jogo
-    this.ctx.fillText(`Vida: ${this.player.health}/${this.player.maxHealth}  |  Ouro: ${this.player.gold}  |  Dano: ${this.player.damage}`, 10, 20);
+    const shieldGeometry = new THREE.BoxGeometry(0.7, 1, 0.1);
+    const shieldMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
+    this.shield = new THREE.Mesh(shieldGeometry, shieldMaterial);
+    this.shield.position.set(-0.7, 1, 0);
+    this.player.add(this.shield);
   }
 
-  drawGrid() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    for (let i = 0; i < this.MAP_WIDTH; i++) {
-      for (let j = 0; j < this.MAP_HEIGHT; j++) {
-        this.ctx.strokeStyle = "black";
-        this.ctx.strokeRect(i * this.TILE_SIZE, j * this.TILE_SIZE, this.TILE_SIZE, this.TILE_SIZE);
-      }
-    }
+  spawnEnemies() {
+    if (!this.scene) return
+
+    const enemyGeometry = new THREE.BoxGeometry(1, 2, 1);
+    const enemyMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    const enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
+    enemy.position.set(Math.random() * 10 - 5, 1, Math.random() * 10 - 5);
+    this.scene.add(enemy);
+    this.enemies.push(enemy);
   }
 
-  drawPlayer() {
-    this.ctx.fillStyle = this.player.color;
-    this.ctx.fillRect(this.player.x * this.TILE_SIZE, this.player.y * this.TILE_SIZE, this.TILE_SIZE, this.TILE_SIZE);
-  }
-
-  drawMonsters() {
-    for (let monster of this.monsters) {
-      this.ctx.fillStyle = monster === this.selectedMonster ? "yellow" : monster.color;
-      this.ctx.fillRect(monster.x * this.TILE_SIZE, monster.y * this.TILE_SIZE, this.TILE_SIZE, this.TILE_SIZE);
-    }
-  }
-
-  drawHealthBar(x: number, y: number, health: number, maxHealth: number) {
-    const healthRatio = health / maxHealth;
-    const barWidth = this.TILE_SIZE * healthRatio;
-
-    this.ctx.fillStyle = "red";
-    this.ctx.fillRect(x * this.TILE_SIZE, (y * this.TILE_SIZE) - 5, this.TILE_SIZE, 4);
-
-    this.ctx.fillStyle = "green";
-    this.ctx.fillRect(x * this.TILE_SIZE, (y * this.TILE_SIZE) - 5, barWidth, 4);
-  }
-
-  update() {
-    this.drawGrid();
-    this.drawPlayer();
-    this.drawMonsters();
-    this.drawHealthBar(this.player.x, this.player.y, this.player.health, this.player.maxHealth);
-
-    for (let monster of this.monsters) {
-      this.drawHealthBar(monster.x, monster.y, monster.health, monster.maxHealth);
-    }
-    this.drawHUD();
-  }
-
-  movePlayer(dx: number, dy: number) {
-    let newX = this.player.x + dx;
-    let newY = this.player.y + dy;
-
-    const objetoNaPosicao = this.isOccupied(newX, newY)
-    if (objetoNaPosicao) {
-      this.selectedMonster = objetoNaPosicao
-    }
-
-    if (!this.isWithinBounds(newX, newY) || objetoNaPosicao) {
-
-    } else {
-      this.player.x = newX;
-      this.player.y = newY;
-    }
-    this.autoAttack();
-    this.turn++;
-    this.monsterTurn();
-    this.update();
-  }
-
-  isOccupied(x: number, y: number) {
-    return this.monsters?.find(m => m.x === x && m.y === y);
-  }
-
-  autoAttack() {
-    let targets = this.monsters.filter(m => Math.abs(m.x - this.player.x) + Math.abs(m.y - this.player.y) === 1);
-    if (targets.length > 0) {
-      let target = this.selectedMonster && targets.includes(this.selectedMonster) ? this.selectedMonster : targets[0];
-      this.attackMonster(target);
+  movePlayer(event) {
+    if (!this.player) return
+    switch (event.key) {
+      case 'w': this.player.position.z -= 0.2; break;
+      case 's': this.player.position.z += 0.2; break;
+      case 'a': this.player.position.x -= 0.2; break;
+      case 'd': this.player.position.x += 0.2; break;
+      case ' ': this.attack(); break;
     }
   }
 
   attack() {
-    let target = this.selectedMonster || this.monsters.find(m => Math.abs(m.x - this.player.x) + Math.abs(m.y - this.player.y) === 1);
-
-    if (target) {
-      this.attackMonster(target);
-    }
-
-    this.turn++;
-    this.monsterTurn();
-    this.update();
-  }
-
-  monsterTurn() {
-    for (let monster of this.monsters) {
-      let dx = this.player.x - monster.x;
-      let dy = this.player.y - monster.y;
-
-      // Se o monstro estiver ao lado do jogador, ele ataca
-      if (Math.abs(dx) + Math.abs(dy) === 1) {
-        this.player.health -= monster.damage;
-        if (this.player.health <= 0) {
-          location.reload();
-        }
-      } else {
-        // Lista de movimentos possíveis (cima, baixo, esquerda, direita)
-        let possibleMoves = [
-          { x: monster.x + 1, y: monster.y }, // Direita
-          { x: monster.x - 1, y: monster.y }, // Esquerda
-          { x: monster.x, y: monster.y + 1 }, // Baixo
-          { x: monster.x, y: monster.y - 1 }  // Cima
-        ].filter(pos => this.isWithinBounds(pos.x, pos.y) && !this.isOccupied(pos.x, pos.y)); // Filtra posições válidas
-
-        // Determina a melhor direção movendo-se na menor distância até o jogador
-        let bestMove = possibleMoves.reduce((best, move) => {
-          let currentDistance = Math.abs(this.player.x - monster.x) + Math.abs(this.player.y - monster.y);
-          let newDistance = Math.abs(this.player.x - move.x) + Math.abs(this.player.y - move.y);
-          return newDistance < currentDistance ? move : best;
-        }, { x: monster.x, y: monster.y }); // Valor padrão é a posição atual, caso não haja opções válidas
-
-        // Move o monstro para a melhor posição
-        monster.x = bestMove.x;
-        monster.y = bestMove.y;
+    for (let enemy of this.enemies) {
+      if (this.player.position.distanceTo(enemy.position) < 2) {
+        this.scene.remove(enemy);
+        this.enemies = this.enemies.filter(e => e !== enemy);
       }
     }
   }
 
-  attackMonster(target: any) {
-    target.health -= this.player.damage;
-    if (target.health <= 0) {
-      this.player.health = Math.min(this.player.health + 2, this.player.maxHealth);
-      this.player.gold += target.reward;
-      this.monsters = this.monsters.filter(m => m !== target);
-      if (this.selectedMonster === target) {
-        this.selectedMonster = null;
-      }
-    }
-
-    if (this.monsters.length === 0) {
-      this.monsterLevel++; // 📈 Aumenta o nível dos monstros
-      this.monsters = this.generateMonsters(10); // 🦇 Gera novos monstros mais fortes
-    }
-  }
-
-  openShop() {
-    if (this.player.gold >= 5) {
-      this.player.maxHealth += 2;
-      this.player.gold -= 5;
-    }
-    if (this.player.gold >= 3) {
-      this.player.damage += 1;
-      this.player.gold -= 3;
-    }
-    this.update();
-  }
-
-  isWithinBounds(x: number, y: number) {
-    return x >= 0 && x < this.MAP_WIDTH && y >= 0 && y < this.MAP_HEIGHT;
-  }
-
-  shopMaisVida(vida: number) {
-    const newHealth = this.player.health + vida
-    this.player.health = Math.min(newHealth, this.player.maxHealth)
-    this.afterShop()
-  }
-
-  shopMaisVidaMaxima(qtd: number) {
-    this.player.maxHealth += qtd
-    this.afterShop()
-  }
-
-  shopMaisDano(qtd: number) {
-    this.player.damage += qtd
-    this.afterShop()
-  }
-
-  afterShop() {
-    this.update()
+  animate() {
+    requestAnimationFrame(this.animate.bind(this));
+    this.controls.update();
+    this.renderer.render(this.scene, this.camera);
   }
 }

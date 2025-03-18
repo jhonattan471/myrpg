@@ -67,9 +67,9 @@ export class AppComponent implements AfterViewInit {
     this.loadEquipment();
 
     this.spawnEnemies();
-    this.enemySpawnInterval = setInterval(this.spawnEnemies, 5000);
+    this.enemySpawnInterval = setInterval(this.spawnEnemies.bind(this), 5000);
 
-    document.addEventListener('keydown', this.movePlayer);
+    document.addEventListener('keydown', this.movePlayer.bind(this));
   }
 
   loadEquipment() {

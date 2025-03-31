@@ -5,9 +5,14 @@ export class Controle {
         w: false
     }
     speed = 1
+    objetoSelecionado?: Objeto
 
     constructor(public self = this) {
 
+    }
+
+    selecionarObjeto(objeto: Objeto) {
+        this.objetoSelecionado = objeto
     }
 }
 
@@ -19,11 +24,9 @@ export class ControlePlayer extends Controle {
     constructor() {
         super();
         document.addEventListener('keydown', (event) => {
-            // console.log("keydown", event)
             this.keys[event.key] = true
         })
         document.addEventListener('keyup', (event) => {
-            // console.log("keyup ", event)
             this.keys[event.key] = false
         });
     }

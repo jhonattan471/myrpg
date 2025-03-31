@@ -1,3 +1,4 @@
+import { Controle, ControlePlayer } from "./controle";
 import { Mundo } from "./mundo"
 import { Posicao } from "./posicao"
 import * as THREE from 'three';
@@ -5,24 +6,27 @@ import * as THREE from 'three';
 export class Objeto {
     static contadorId = 0
     id: number;
-    posicao: Posicao = new Posicao()
     tamanho = 1
     mesh: THREE.Mesh
-    keys = {}
+    speed = .02
+    controle = new Controle()
 
-    constructor() {
+    constructor(public posicao: Posicao = new Posicao()) {
         this.id = ++Objeto.contadorId; // Incrementa o ID automaticamente
         this.createMesh()
     }
 
-    mover(posicao: Posicao, mundo: Mundo) {
-        Object.assign(this.mesh, posicao)
+    mover(posicao: Posicao) {
+        Object.assign(this.mesh.position, posicao)
     }
 
     createMesh() {
         const geometry = new THREE.BoxGeometry();
         const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         const cube = new THREE.Mesh(geometry, material);
+        cube.position.x = this.posicao.x
+        cube.position.y = this.posicao.y
+        cube.position.z = this.posicao.z
         this.mesh = cube;
     }
 }
@@ -30,14 +34,19 @@ export class Objeto {
 
 export class Player extends Objeto {
     cor: string = "red"
-    playerSpeed = .02;
     playerHealth = 100;
 
+    constructor() {
+        super()
+        this.controle = new ControlePlayer()
+    }
     override createMesh(): void {
         const geometry = new THREE.BoxGeometry();
         const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         const cube = new THREE.Mesh(geometry, material);
-        cube.position.y = 1
+        cube.position.x = this.posicao.x
+        cube.position.y = this.posicao.y
+        cube.position.z = this.posicao.z
         this.mesh = cube;
     }
 }

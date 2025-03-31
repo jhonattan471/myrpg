@@ -1,3 +1,5 @@
+import { delay, firstValueFrom, Observable } from "rxjs";
+import { Controle } from "./controle";
 import { NotPossibleError } from "./errors";
 import { Objeto, Player } from "./objeto";
 import { Posicao } from "./posicao";
@@ -48,11 +50,8 @@ export class Mundo {
             this.renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        document.addEventListener('keydown', (event) => this.keys[event.key] = true);
-        document.addEventListener('keyup', (event) => this.keys[event.key] = false);
         this.animate()
         console.log("mundo iniciado.")
-
     }
 
     _adicionarObjetos(objeto: Objeto): THREE.Mesh {
@@ -77,6 +76,7 @@ export class Mundo {
         if (this.pegarObjetoNaPosciao(this.player.mesh.position)) {
             throw new NotPossibleError();
         }
+        this.objetos.push(this.player)
         this.scene.add(this.player.mesh);
     }
 
@@ -103,19 +103,48 @@ export class Mundo {
         return this.scene;
     }
 
-    animate() {
+    async animate() {
         requestAnimationFrame(this.animate.bind(this));
-        this.movimentarPlayer()
+        // console.log('this.objetos', JSON.stringify(this.objetos))
+        for (let objeto of this.objetos) {
+            // console.log("movimentando objeto", objeto)
+            this.movimentarObjeto(objeto)
+        }
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
     }
 
-    movimentarPlayer() {
-        console.log("movimentar player", this.keys, this.player.mesh.position.x)
-        if (!this.player) return;
-        if (this.keys['w']) this.player.mover({ z: this.player.mesh.position.z -= this.player.playerSpeed }, this)
-        if (this.keys['s']) this.player.mover({ z: this.player.mesh.position.z += this.player.playerSpeed }, this)
-        if (this.keys['a']) this.player.mover({ x: this.player.mesh.position.x -= this.player.playerSpeed }, this)
-        if (this.keys['d']) this.player.mover({ x: this.player.mesh.position.x += this.player.playerSpeed }, this)
+    movimentarObjeto(objeto: Objeto) {
+        if (!objeto) return;
+        let newPosition = {
+            x: objeto.mesh.position.x || 0,
+            y: objeto.mesh.position.y || 0,
+            z: objeto.mesh.position.z || 0,
+        }
+        if (objeto.controle.keys['w']) newPosition.z -= objeto.speed
+        if (objeto.controle.keys['s']) newPosition.z += objeto.speed
+        if (objeto.controle.keys['a']) newPosition.x -= objeto.speed
+        if (objeto.controle.keys['d']) newPosition.x += objeto.speed
+
+        let objetoOnPosition = this.getObjectOnPosition(objeto, { ...objeto.mesh.position, ...newPosition })
+        if (objetoOnPosition) return
+        objeto.mover({
+            x: newPosition.x || objeto.mesh.position.x || 0,
+            y: newPosition.y || objeto.mesh.position.y || 0,
+            z: newPosition.z || objeto.mesh.position.z || 0,
+        })
+    }
+
+    getObjectOnPosition(_objeto: Objeto, targetPosition: THREE.Vector3): Objeto | null {
+        for (const objeto of this.objetos) {
+            if (objeto.id === _objeto.id) continue;
+
+            let distance = objeto.mesh.position.distanceTo(targetPosition)
+
+            if (distance < (objeto.tamanho)) {
+                return objeto;
+            }
+        }
+        return null;
     }
 }

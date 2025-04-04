@@ -3,6 +3,12 @@ import { Objeto, Player } from "./objeto";
 import { Posicao } from "./posicao";
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+export interface TileInfo {
+    x: number;
+    z: number;
+    mesh: THREE.Mesh;
+    borda: THREE.LineSegments;
+}
 
 export class Mundo {
     objetos: Objeto[] = []
@@ -36,20 +42,13 @@ export class Mundo {
         light.position.set(5, 10, 5);
         this.scene.add(light);
 
-        // Criando o chão
-        const groundGeometry = new THREE.PlaneGeometry(20, 20);
-        const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
-        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-        ground.position.y = -0.5;
-        ground.rotation.x = -Math.PI / 2;
-        this.scene.add(ground);
 
         window.addEventListener("resize", () => {
             this.camera.aspect = window.innerWidth / window.innerHeight;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
         });
-
+        this.gerarChaoGrid()
         this.animate()
     }
 
@@ -61,6 +60,69 @@ export class Mundo {
     //     this.scene.add(player);
     //     return player
     // }
+
+    // criarOChao() {
+    //     // // Criando o chão
+    //     // const groundGeometry = new THREE.PlaneGeometry(20, 20);
+    //     // const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+    //     // const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    //     // ground.position.y = -0.5;
+    //     // ground.rotation.x = -Math.PI / 2;
+    //     // this.scene.add(ground);
+    //     const groundGeometry = new THREE.PlaneGeometry(20, 20);
+    //     const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+    //     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    //     ground.position.y = -0.5;
+    //     ground.rotation.x = -Math.PI / 2;
+    //     this.scene.add(ground);
+
+    //     window.addEventListener("resize", () => {
+    //         this.camera.aspect = window.innerWidth / window.innerHeight;
+    //         this.camera.updateProjectionMatrix();
+    //         this.renderer.setSize(window.innerWidth, window.innerHeight);
+    //     });
+
+    // }
+
+    gerarChaoGrid(
+        scene: THREE.Scene = this.scene,
+        tamanho: number = 100
+    ): TileInfo[][] {
+        const tileSize = 1;
+        const tileGeometry = new THREE.BoxGeometry(tileSize, 0.1, tileSize);
+        const tileMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+
+        const grid: TileInfo[][] = [];
+        const offset = tamanho / 2;
+
+        for (let x = 0; x < tamanho; x++) {
+            const linha: TileInfo[] = [];
+
+            for (let z = 0; z < tamanho; z++) {
+                const tile = new THREE.Mesh(tileGeometry, tileMaterial);
+                tile.position.set(x - offset + 0.5, -0.5, z - offset + 0.5);
+                scene.add(tile);
+
+                const edges = new THREE.EdgesGeometry(tileGeometry);
+                const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
+                const border = new THREE.LineSegments(edges, lineMaterial);
+                border.position.copy(tile.position);
+                scene.add(border);
+
+                linha.push({
+                    x,
+                    z,
+                    mesh: tile,
+                    borda: border
+                });
+            }
+
+            grid.push(linha);
+        }
+
+        return grid;
+    }
+
 
     adicionarObjeto(objeto: Objeto = new Objeto()): THREE.Mesh {
         if (this.pegarObjetoNaPosciao(objeto.mesh.position)) {

@@ -1,5 +1,3 @@
-import { delay, firstValueFrom, Observable } from "rxjs";
-import { Controle } from "./controle";
 import { NotPossibleError } from "./errors";
 import { Objeto, Player } from "./objeto";
 import { Posicao } from "./posicao";
@@ -8,15 +6,16 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 export class Mundo {
     objetos: Objeto[] = []
-    scene: THREE.Scene
-    camera: THREE.PerspectiveCamera
-    renderer: THREE.WebGLRenderer
-    controls: OrbitControls
+    scene!: THREE.Scene
+    camera!: THREE.PerspectiveCamera
+    renderer!: THREE.WebGLRenderer
+    controls!: OrbitControls
     keys = {}
     player = new Player()
 
     constructor() {
         this.initScene();
+        this.adicionarRaycastSelecao()
     }
 
     private initScene(): void {
@@ -41,6 +40,7 @@ export class Mundo {
         const groundGeometry = new THREE.PlaneGeometry(20, 20);
         const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.position.y = -1;
         ground.rotation.x = -Math.PI / 2;
         this.scene.add(ground);
 
@@ -54,21 +54,22 @@ export class Mundo {
         console.log("mundo iniciado.")
     }
 
-    _adicionarObjetos(objeto: Objeto): THREE.Mesh {
-        const playerGeometry = new THREE.BoxGeometry(1, 2, 1);
-        const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
-        let player = new THREE.Mesh(playerGeometry, playerMaterial);
-        player.position.y = 1;
-        this.scene.add(player);
-    }
+    // _adicionarObjetos(objeto: Objeto): THREE.Mesh {
+    //     const playerGeometry = new THREE.BoxGeometry(1, 2, 1);
+    //     const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
+    //     let player = new THREE.Mesh(playerGeometry, playerMaterial);
+    //     player.position.y = 1;
+    //     this.scene.add(player);
+    //     return player
+    // }
 
     adicionarObjeto(objeto: Objeto = new Objeto()): THREE.Mesh {
-        if (this.pegarObjetoNaPosciao(objeto.posicao)) {
+        if (this.pegarObjetoNaPosciao(objeto.mesh.position)) {
             throw new NotPossibleError();
         }
         this.objetos.push(objeto)
         this.scene.add(objeto.mesh);
-        return objeto;
+        return objeto.mesh;
     }
 
     adicionarPlayer() {
@@ -88,9 +89,9 @@ export class Mundo {
 
     pegarObjetoNaPosciao(posicao: Posicao) {
         return this.objetos.find(o => {
-            const sameX = o.posicao.x == posicao.x
-            const sameY = o.posicao.y == posicao.y
-            const sameZ = o.posicao.z == posicao.z
+            const sameX = o.mesh.position.x == posicao.x
+            const sameY = o.mesh.position.y == posicao.y
+            const sameZ = o.mesh.position.z == posicao.z
 
             if (sameX && sameY && sameZ) {
                 return true
@@ -126,7 +127,7 @@ export class Mundo {
         if (objeto.controle.keys['a']) newPosition.x -= objeto.speed
         if (objeto.controle.keys['d']) newPosition.x += objeto.speed
 
-        let objetoOnPosition = this.getObjectOnPosition(objeto, { ...objeto.mesh.position, ...newPosition })
+        let objetoOnPosition = this.getObjectOnPosition(objeto, { ...objeto.mesh.position, ...newPosition } as any)
         if (objetoOnPosition) return
         objeto.mover({
             x: newPosition.x || objeto.mesh.position.x || 0,
@@ -140,11 +141,34 @@ export class Mundo {
             if (objeto.id === _objeto.id) continue;
 
             let distance = objeto.mesh.position.distanceTo(targetPosition)
-
+            console.log(distance)
             if (distance < (objeto.tamanho)) {
                 return objeto;
             }
         }
         return null;
+    }
+
+    adicionarRaycastSelecao() {
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        this.renderer.domElement.addEventListener('click', (event: MouseEvent) => {
+            const rect = this.renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, this.camera);
+            const meshes = this.objetos.map(obj => obj.mesh);
+            const intersects = raycaster.intersectObjects(meshes);
+            console.log('intersects', intersects)
+            if (intersects.length > 0) {
+                const selecionado = this.objetos.find(obj => obj.mesh === intersects[0].object);
+                console.log('selecionado', selecionado)
+                if (selecionado) {
+                    selecionado.destacarNaCena(this.scene);
+                }
+            }
+        });
     }
 }

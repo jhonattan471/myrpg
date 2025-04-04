@@ -100,7 +100,7 @@ export class Mundo {
 
             for (let z = 0; z < tamanho; z++) {
                 const tile = new THREE.Mesh(tileGeometry, tileMaterial);
-                tile.position.set(x - offset + 0.5, -0.5, z - offset + 0.5);
+                tile.position.set(x - offset + 0.5, -0.6, z - offset + 0.5);
                 scene.add(tile);
 
                 const edges = new THREE.EdgesGeometry(tileGeometry);
@@ -178,23 +178,25 @@ export class Mundo {
 
     movimentarObjeto(objeto: Objeto) {
         if (!objeto) return;
-        let newPosition = {
-            x: objeto.mesh.position.x || 0,
-            y: objeto.mesh.position.y || 0,
-            z: objeto.mesh.position.z || 0,
-        }
-        if (objeto.controle.keys['w']) newPosition.z -= objeto.speed
-        if (objeto.controle.keys['s']) newPosition.z += objeto.speed
-        if (objeto.controle.keys['a']) newPosition.x -= objeto.speed
-        if (objeto.controle.keys['d']) newPosition.x += objeto.speed
 
-        let objetoOnPosition = this.getObjectOnPosition(objeto, { ...objeto.mesh.position, ...newPosition } as any)
-        if (objetoOnPosition) return
-        objeto.mover({
-            x: newPosition.x || objeto.mesh.position.x || 0,
-            y: newPosition.y || objeto.mesh.position.y || 0,
-            z: newPosition.z || objeto.mesh.position.z || 0,
-        })
+        let dx = 0;
+        let dz = 0;
+
+        if (objeto.controle.keys['w']) dz -= 1;
+        if (objeto.controle.keys['s']) dz += 1;
+        if (objeto.controle.keys['a']) dx -= 1;
+        if (objeto.controle.keys['d']) dx += 1;
+
+        if (dx === 0 && dz === 0) return; // Nenhuma tecla pressionada
+
+        const novoX = objeto.posicao.x + dx;
+        const novoZ = objeto.posicao.z + dz;
+
+        // Verificar se já tem objeto no destino
+        const objetoNoDestino = this.getObjectOnTile(novoX, novoZ);
+        if (objetoNoDestino) return;
+
+        objeto.moverParaTile(novoX, novoZ);
     }
 
     getObjectOnPosition(_objeto: Objeto, targetPosition: THREE.Vector3): Objeto | null {
@@ -208,6 +210,10 @@ export class Mundo {
             }
         }
         return null;
+    }
+
+    getObjectOnTile(x: number, z: number): Objeto | null {
+        return this.objetos.find(obj => obj.posicao.x === x && obj.posicao.y === z) || null;
     }
 
     adicionarRaycastSelecao() {

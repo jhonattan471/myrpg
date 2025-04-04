@@ -23,6 +23,12 @@ export class Objeto {
         this.mesh.position.set(posicao.x, posicao.y, posicao.z);
     }
 
+    moverParaTile(x: number, z: number) {
+        this.posicao.x = x;
+        this.posicao.z = z;
+        this.mesh.position.set(x + 0.5, this.mesh.position.y, z + 0.5);
+    }
+
     createMesh() {
         // const geometry = new THREE.BoxGeometry();
         // const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });

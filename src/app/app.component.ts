@@ -17,7 +17,7 @@ export class AppComponent implements AfterViewInit {
   ngAfterViewInit(): void {
     this.mundo = new Mundo()
     this.mundo.adicionarPlayer()
-    this.adicionarObjeto1()
+    // this.adicionarObjeto1()
   }
 
   adicionarObjeto1() {

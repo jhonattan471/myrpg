@@ -40,7 +40,7 @@ export class Mundo {
         const groundGeometry = new THREE.PlaneGeometry(20, 20);
         const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-        ground.position.y = -1;
+        ground.position.y = -0.5;
         ground.rotation.x = -Math.PI / 2;
         this.scene.add(ground);
 
@@ -51,7 +51,6 @@ export class Mundo {
         });
 
         this.animate()
-        console.log("mundo iniciado.")
     }
 
     // _adicionarObjetos(objeto: Objeto): THREE.Mesh {
@@ -141,7 +140,7 @@ export class Mundo {
             if (objeto.id === _objeto.id) continue;
 
             let distance = objeto.mesh.position.distanceTo(targetPosition)
-            console.log(distance)
+            // console.log(distance)
             if (distance < (objeto.tamanho)) {
                 return objeto;
             }

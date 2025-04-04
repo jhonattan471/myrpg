@@ -52,41 +52,9 @@ export class Mundo {
         this.animate()
     }
 
-    // _adicionarObjetos(objeto: Objeto): THREE.Mesh {
-    //     const playerGeometry = new THREE.BoxGeometry(1, 2, 1);
-    //     const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
-    //     let player = new THREE.Mesh(playerGeometry, playerMaterial);
-    //     player.position.y = 1;
-    //     this.scene.add(player);
-    //     return player
-    // }
-
-    // criarOChao() {
-    //     // // Criando o chão
-    //     // const groundGeometry = new THREE.PlaneGeometry(20, 20);
-    //     // const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
-    //     // const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    //     // ground.position.y = -0.5;
-    //     // ground.rotation.x = -Math.PI / 2;
-    //     // this.scene.add(ground);
-    //     const groundGeometry = new THREE.PlaneGeometry(20, 20);
-    //     const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
-    //     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    //     ground.position.y = -0.5;
-    //     ground.rotation.x = -Math.PI / 2;
-    //     this.scene.add(ground);
-
-    //     window.addEventListener("resize", () => {
-    //         this.camera.aspect = window.innerWidth / window.innerHeight;
-    //         this.camera.updateProjectionMatrix();
-    //         this.renderer.setSize(window.innerWidth, window.innerHeight);
-    //     });
-
-    // }
-
     gerarChaoGrid(
         scene: THREE.Scene = this.scene,
-        tamanho: number = 100
+        tamanho: number = 20
     ): TileInfo[][] {
         const tileSize = 1;
         const tileGeometry = new THREE.BoxGeometry(tileSize, 0.1, tileSize);
@@ -165,38 +133,45 @@ export class Mundo {
         return this.scene;
     }
 
-    async animate() {
-        requestAnimationFrame(this.animate.bind(this));
-        // console.log('this.objetos', JSON.stringify(this.objetos))
+    animate(): void {
+        requestAnimationFrame(() => this.animate());
         for (let objeto of this.objetos) {
             // console.log("movimentando objeto", objeto)
             this.movimentarObjeto(objeto)
         }
         this.controls.update();
+        // // atualizar câmera
+        // this.camera.position.x = this.player.mesh.position.x;
+        // this.camera.position.z = this.player.mesh.position.z + 5;
+        // this.camera.position.y = this.player.mesh.position.y + 10;
+        // this.camera.lookAt(this.player.mesh.position);
+
         this.renderer.render(this.scene, this.camera);
     }
 
+    ultimoMovimento = 0;
+    intervalo = 200; // milissegundos (0.2s entre movimentos)
+
     movimentarObjeto(objeto: Objeto) {
-        if (!objeto) return;
+        const agora = performance.now();
+        if (agora - this.ultimoMovimento < this.intervalo) return;
 
-        let dx = 0;
-        let dz = 0;
-
+        let dx = 0, dz = 0;
         if (objeto.controle.keys['w']) dz -= 1;
         if (objeto.controle.keys['s']) dz += 1;
         if (objeto.controle.keys['a']) dx -= 1;
         if (objeto.controle.keys['d']) dx += 1;
 
-        if (dx === 0 && dz === 0) return; // Nenhuma tecla pressionada
+        if (dx === 0 && dz === 0) return;
 
         const novoX = objeto.posicao.x + dx;
         const novoZ = objeto.posicao.z + dz;
 
-        // Verificar se já tem objeto no destino
-        const objetoNoDestino = this.getObjectOnTile(novoX, novoZ);
-        if (objetoNoDestino) return;
+        const objNoDestino = this.getObjectOnTile(novoX, novoZ);
+        if (objNoDestino) return console.log("object on tile.");
 
         objeto.moverParaTile(novoX, novoZ);
+        this.ultimoMovimento = agora;
     }
 
     getObjectOnPosition(_objeto: Objeto, targetPosition: THREE.Vector3): Objeto | null {
@@ -213,7 +188,7 @@ export class Mundo {
     }
 
     getObjectOnTile(x: number, z: number): Objeto | null {
-        return this.objetos.find(obj => obj.posicao.x === x && obj.posicao.y === z) || null;
+        return this.objetos.find(obj => obj.posicao.x === x && obj.posicao.z === z) || null;
     }
 
     adicionarRaycastSelecao() {

@@ -81,6 +81,7 @@ export class Mundo {
         }
 
         this.mapa[this.player.x][this.player.z].objetos.push(this.player)
+        this.scene.add(this.player.mesh);
     }
 
     movimentoEstaDisponivel(objeto: Objeto, x, z) {
@@ -104,10 +105,8 @@ export class Mundo {
     intervalo = 200; // milissegundos (0.2s entre movimentos)
 
     movimentarObjeto(objeto: Objeto) {
-        console.log("moving")
         const agora = performance.now();
         if (agora - this.ultimoMovimento < this.intervalo) return;
-        console.log("moving2")
         let dx = 0, dz = 0;
         if (objeto.controle.keys['w']) dz -= 1;
         if (objeto.controle.keys['s']) dz += 1;
@@ -115,7 +114,6 @@ export class Mundo {
         if (objeto.controle.keys['d']) dx += 1;
 
         if (dx === 0 && dz === 0) return;
-        console.log("moving3")
         const novoX = objeto.mesh.position.x + dx;
         const novoZ = objeto.mesh.position.z + dz;
 
@@ -124,11 +122,13 @@ export class Mundo {
 
 
         let currentTile = this.mapa[objeto.mesh.position.x][objeto.mesh.position.z]
-        console.log("currentTile", currentTile)
         let nextTile = this.mapa[novoX][novoZ]
-        console.log("nextTile", nextTile)
-        currentTile.objetos = currentTile.objetos.filter(e => e.id == objeto.id)
+        console.log('currentTile', currentTile, 'nextTile', nextTile)
+        currentTile.objetos = currentTile.objetos.filter(e => e.id != objeto.id)
         nextTile.objetos.push(objeto)
+        objeto.mesh.position.x = novoX
+        objeto.mesh.position.z = novoZ
+
         this.ultimoMovimento = agora;
     }
 
@@ -182,7 +182,7 @@ export class Mundo {
                 // posicao.objetos.forEach(e => e.createMesh())
                 for (let objeto of posicao.objetos) {
                     if (objeto instanceof Player) {
-                        // this.movimentarObjeto(objeto)
+                        this.movimentarObjeto(objeto)
                     }
                     objeto.mesh.position.x = posicao.x
                     objeto.mesh.position.z = posicao.z

@@ -19,11 +19,6 @@ export class Objeto {
 
     constructor(public x = 0, public z = 0, public y = 0) {
         this.id = Objeto.idCounter++;
-        this.createMesh()
-    }
-
-    mover(posicao: Posicao) {
-        this.mesh.position.set(posicao.x, posicao.y, posicao.z);
     }
 
     createMesh() {
@@ -82,7 +77,7 @@ export class Player extends Objeto {
         super(x, z, y);
         this.controle = new ControlePlayer();
         this.createMesh();
-        this.bloqueia = true
+        this.bloqueia = false
     }
 
 

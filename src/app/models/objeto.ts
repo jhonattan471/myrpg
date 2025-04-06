@@ -5,6 +5,8 @@ import { Controle, ControlePlayer } from './controle';
 
 let selectionBox: THREE.LineSegments | null = null;
 
+
+
 export class Objeto {
     static idCounter = 0;
     id: number;
@@ -12,21 +14,16 @@ export class Objeto {
     mesh!: THREE.Mesh;
     speed = 0.02;
     controle = new Controle()
+    health = 100;
+    bloqueia = false
 
-    constructor(public posicao: Posicao = new Posicao()) {
+    constructor(public x = 0, public z = 0, public y = 0) {
         this.id = Objeto.idCounter++;
-        this.createMesh();
-        this.mesh.position.set(posicao.x, posicao.y, posicao.z);
+        this.createMesh()
     }
 
     mover(posicao: Posicao) {
         this.mesh.position.set(posicao.x, posicao.y, posicao.z);
-    }
-
-    moverParaTile(x: number, z: number) {
-        this.posicao.x = x;
-        this.posicao.z = z;
-        this.mesh.position.set(x + 0.5, this.mesh.position.y, z + 0.5);
     }
 
     createMesh() {
@@ -34,11 +31,11 @@ export class Objeto {
         // const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         // this.mesh = new THREE.Mesh(geometry, material);
         const geometry = new THREE.BoxGeometry();
-        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const material = new THREE.MeshBasicMaterial({ color: '0x00ff00 ' });
         const cube = new THREE.Mesh(geometry, material);
-        cube.position.x = this.posicao.x
-        cube.position.y = this.posicao.y
-        cube.position.z = this.posicao.z
+        cube.position.x = this.x
+        cube.position.y = this.y
+        cube.position.z = this.z
         this.mesh = cube;
     }
 
@@ -63,18 +60,53 @@ export class Objeto {
     }
 }
 
-export class Player extends Objeto {
-    cor = 'red';
-    playerHealth = 100;
-
-    constructor(posicao: Posicao = new Posicao()) {
-        super(posicao);
-        this.controle = new ControlePlayer();
+export class Piso extends Objeto {
+    constructor(x, z, y, public cor: any = 'black') {
+        super(x, z, y)
+        this.createMesh();
     }
+
+    override createMesh() {
+        const tileSize = 1;
+        const tileGeometry = new THREE.BoxGeometry(tileSize, 0.1, tileSize)
+        const tileMaterial = new THREE.MeshStandardMaterial({ color: this.cor });
+        const tile = new THREE.Mesh(tileGeometry, tileMaterial);
+        this.mesh = tile;
+    }
+}
+
+export class Player extends Objeto {
+    cor = 'blue';
+
+    constructor(x = 0, z = 0, y = 0) {
+        super(x, z, y);
+        this.controle = new ControlePlayer();
+        this.createMesh();
+        this.bloqueia = true
+    }
+
 
     override createMesh() {
         const geometry = new THREE.BoxGeometry(this.tamanho, this.tamanho, this.tamanho);
         const material = new THREE.MeshBasicMaterial({ color: this.cor });
+        console.log("❤", this, this.cor)
         this.mesh = new THREE.Mesh(geometry, material);
     }
 }
+export class Monstro extends Objeto {
+    cor = 'yellow';
+
+    constructor(x = 0, z = 0, y = 0) {
+        super(x, z, y);
+        this.controle = new ControlePlayer();
+        this.createMesh();
+        this.bloqueia = true
+    }
+
+    override createMesh() {
+        const geometry = new THREE.BoxGeometry(this.tamanho, this.tamanho, this.tamanho);
+        const material = new THREE.MeshBasicMaterial({ color: 'yellow' });
+        this.mesh = new THREE.Mesh(geometry, material);
+    }
+}
+

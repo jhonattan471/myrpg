@@ -1,10 +1,6 @@
 import { AfterViewInit, Component } from '@angular/core';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Mundo } from './models/mundo';
-import { Objeto, Player } from './models/objeto';
-import { Posicao } from './models/posicao';
+import { Monstro, Objeto } from './models/objeto';
 
 @Component({
   selector: 'app-root',
@@ -18,14 +14,16 @@ export class AppComponent implements AfterViewInit {
     this.mundo = new Mundo()
     this.mundo.adicionarPlayer()
     // this.adicionarObjeto1()
+    // this.adicionarMonstro()
   }
 
   adicionarObjeto1() {
-    let posicao = new Posicao()
-    posicao.x = 0
-    posicao.y = 0
-    posicao.z = -5
-    const objeto = new Objeto(posicao)
+    const objeto = new Objeto(0, 0, -5)
     this.mundo.adicionarObjeto(objeto)
+  }
+
+  adicionarMonstro() {
+    const monstro = new Monstro(0, 0, 0)
+    this.mundo.adicionarObjeto(monstro)
   }
 }

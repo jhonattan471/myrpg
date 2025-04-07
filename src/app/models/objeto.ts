@@ -13,6 +13,12 @@ export class Objeto {
     controle = new Controle()
     health = 100;
     bloqueia = false
+    forca = 10
+    distanciaAtaque = 1
+    dataUltimoAtaque
+    velocidadeDeAtaque
+    podeAtacar = true
+    morto = false
 
     constructor(public x = 0, public z = 0, public y = 0) {
         this.id = Objeto.idCounter++;
@@ -49,6 +55,74 @@ export class Objeto {
         selectionBox = new THREE.LineSegments(geometry, material);
         selectionBox.position.set(center.x, box.min.y + 0.01, center.z);
         scene.add(selectionBox);
+    }
+
+    atacar(alvo: Objeto) {
+        try {
+            console.log("tentnado ataque")
+            this.podeAtacar = false
+            const dano = this.calcular_dano(alvo)
+            const distancia = this.calcularDistancia(alvo)
+            if (distancia > this.distanciaAtaque) return console.log("tentnado ataque", distancia, this.distanciaAtaque, this, alvo)
+            console.log(this, "atacando", alvo, 'distancia', distancia, 'this.distanciaAtaque', this.distanciaAtaque)
+            alvo.receberDano(dano)
+            if (alvo.morto) {
+                this.controle.objetoSelecionado = undefined
+            }
+        } catch (e) {
+            throw e
+        } finally {
+            setTimeout(() => {
+                this.podeAtacar = true
+            }, 1000);
+        }
+    }
+
+    calcular_dano(objeto: Objeto) {
+        return 10
+    }
+
+    receberDano(quantidade) {
+        console.log("💥 DANO RECEBIDO", this, quantidade)
+        this.health -= quantidade;
+        if (this.health < 0) {
+            this.morrer()
+        }
+    }
+
+    calcularDistancia(alvo: Objeto): number {
+        const dx = this.x - alvo.x;
+        const dy = this.y - alvo.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    morrer() {
+        console.log("✝ MORREU", this)
+        this.mesh.material = new THREE.MeshBasicMaterial({ color: 0x555555 });
+        this.morto = true
+        // const pos = this.mesh.position.clone();
+        // // cena.remove(this.mesh); // remove o antigo
+
+        // const geometry = new THREE.BoxGeometry(1, 1, 1);
+        // const material = new THREE.MeshBasicMaterial({ color: 'red' });
+        // const deadMesh = new THREE.Mesh(geometry, material);
+        // deadMesh.position.copy(pos);
+
+        // this.mesh = deadMesh;
+        // // cena.add(this.mesh);
+        // this.mesh.visible = false
+        // this.mesh.clear()
+    }
+
+    gerarObjetoMorto() {
+        let objeto = new Objeto(this.x, this.z, this.y - .25)
+        const geometry = new THREE.BoxGeometry(.5, .5, .5);
+        const material = new THREE.MeshBasicMaterial({ color: 'red' });
+        const deadMesh = new THREE.Mesh(geometry, material);
+        objeto.bloqueia = false
+        objeto.mesh = deadMesh;
+
+        return objeto
     }
 }
 
@@ -87,10 +161,12 @@ export class Player extends Objeto {
 }
 export class Monstro extends Objeto {
     cor = 'yellow';
+    ;
 
     constructor(x = 0, z = 0, y = 0) {
         super(x, z, y);
         this.controle = new ControlePlayer();
+        this.health = 10
         this.createMesh();
         this.bloqueia = true
     }

@@ -1,5 +1,5 @@
 import { NotPossibleError } from "./errors";
-import { Objeto, Piso, Player } from "./objeto";
+import { Monstro, Objeto, Piso, Player } from "./objeto";
 import { Posicao } from "./posicao";
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -65,7 +65,7 @@ export class Mundo {
     }
 
     adicionarObjeto(objeto: Objeto = new Objeto()): THREE.Mesh {
-        if (this.posicaoEstaDisponivel(objeto.mesh.position.x, objeto.mesh.position.z)) {
+        if (objeto.bloqueia && this.posicaoEstaDisponivel(objeto.mesh.position.x, objeto.mesh.position.z)) {
             throw new NotPossibleError();
         }
         this.mapa[objeto.mesh.position.x][objeto.mesh.position.z].objetos.push(objeto)
@@ -99,7 +99,6 @@ export class Mundo {
     getScene(): THREE.Scene {
         return this.scene;
     }
-
 
     ultimoMovimento = 0;
     intervalo = 200; // milissegundos (0.2s entre movimentos)
@@ -177,7 +176,10 @@ export class Mundo {
             }
 
             objetosSelecionados.forEach(e => {
-                e.destacarNaCena(this.scene);
+                if (e instanceof Monstro) {
+                    e.destacarNaCena(this.scene);
+                    this.player.controle.objetoSelecionado = e
+                }
             })
 
             console.log('objetosSelecionados', objetosSelecionados)
@@ -195,9 +197,14 @@ export class Mundo {
                     objeto.mesh.position.x = posicao.x
                     objeto.mesh.position.z = posicao.z
                     objeto.mesh.position.y = objeto.y
+                    objeto.x = posicao.x
+                    objeto.z = posicao.z
+                    this.gerarMorte(objeto)
                 }
+                posicao.objetos = posicao.objetos.filter(e => !e.morto)
             }
         }
+        this.gerenciarAtaques()
         this.controls.update();
         // atualizar câmera
         // this.camera.position.x = this.player.mesh.position.x + 0;
@@ -208,4 +215,21 @@ export class Mundo {
         this.renderer.render(this.scene, this.camera);
     }
 
+    gerenciarAtaques() {
+        if (!this.player.podeAtacar) return
+        if (!this.player.controle.objetoSelecionado) return
+
+        // this.player.atacar()
+        if (this.player.podeAtacar) {
+            this.player.atacar(this.player.controle.objetoSelecionado)
+        }
+    }
+
+    gerarMorte(objeto: Objeto) {
+        if (!objeto.morto) return
+        let newObjeto = objeto.gerarObjetoMorto()
+        this.scene.remove(objeto.mesh)
+        this.adicionarObjeto(newObjeto)
+    }
 }
+

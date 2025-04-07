@@ -11,7 +11,7 @@ export class Mundo {
     controls!: OrbitControls
     keys = {}
     player = new Player()
-    tamanho = 5
+    tamanho = 10
     mapa: Posicao[][] = []
 
     constructor() {
@@ -49,14 +49,13 @@ export class Mundo {
     }
 
     gerarChaoGrid() {
-        const offset = this.tamanho / 2
         for (let x = 0; x < this.tamanho; x++) {
             let linha: Posicao[] = []
             this.mapa[x] = []
             for (let z = 0; z < this.tamanho; z++) {
                 const isPreto = (x + z) % 2 === 0;
                 const corTile = isPreto ? 0x000000 : 0xffffff; // preto e branco
-                const piso = new Piso(x - offset, 1, z - offset, corTile)
+                const piso = new Piso(x, z, -1, corTile)
                 this.scene.add(piso.mesh);
                 linha.push(new Posicao(x, 0, z, [piso]));
             }
@@ -69,13 +68,13 @@ export class Mundo {
         if (this.posicaoEstaDisponivel(objeto.mesh.position.x, objeto.mesh.position.z)) {
             throw new NotPossibleError();
         }
-        this.objetos.push(objeto)
+        this.mapa[objeto.mesh.position.x][objeto.mesh.position.z].objetos.push(objeto)
         this.scene.add(objeto.mesh);
         return objeto.mesh;
     }
 
     adicionarPlayer() {
-        this.player = new Player()
+        this.player = new Player(5, 5, 0)
         if (this.posicaoEstaDisponivel(this.player.mesh.position.x, this.player.mesh.position.z)) {
             throw new NotPossibleError();
         }
@@ -92,6 +91,7 @@ export class Mundo {
 
     posicaoEstaDisponivel(x, z) {
         let tile = this.mapa[x][z]
+        console.log(tile.objetos)
         const bloqueada = tile.objetos.filter(e => e.bloqueia == true).length
         return bloqueada;
     }
@@ -118,6 +118,8 @@ export class Mundo {
         const novoZ = objeto.mesh.position.z + dz;
 
         const disponivel = this.posicaoEstaDisponivel(novoX, novoZ);
+
+        console.log('disponivel', disponivel)
         if (disponivel) return console.log("posição indisponível.");
 
 
@@ -165,13 +167,20 @@ export class Mundo {
             const meshes = this.objetos.map(obj => obj.mesh);
             const intersects = raycaster.intersectObjects(meshes);
 
-            if (intersects.length > 0) {
-                const selecionado = this.objetos.find(obj => obj.mesh === intersects[0].object);
-                console.log('selecionado', selecionado)
-                if (selecionado) {
-                    selecionado.destacarNaCena(this.scene);
+            let objetosSelecionados: Objeto[] = []
+
+            for (let meshAtravessado of intersects) {
+                const objetoCorrespondente = this.objetos.find(obj => obj.mesh === meshAtravessado.object);
+                if (objetoCorrespondente) {
+                    objetosSelecionados.push(objetoCorrespondente)
                 }
             }
+
+            objetosSelecionados.forEach(e => {
+                e.destacarNaCena(this.scene);
+            })
+
+            console.log('objetosSelecionados', objetosSelecionados)
         });
     }
 
@@ -179,13 +188,13 @@ export class Mundo {
         requestAnimationFrame(() => this.animate());
         for (let row of this.mapa) {
             for (let posicao of row) {
-                // posicao.objetos.forEach(e => e.createMesh())
                 for (let objeto of posicao.objetos) {
                     if (objeto instanceof Player) {
                         this.movimentarObjeto(objeto)
                     }
                     objeto.mesh.position.x = posicao.x
                     objeto.mesh.position.z = posicao.z
+                    objeto.mesh.position.y = objeto.y
                 }
             }
         }

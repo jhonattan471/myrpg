@@ -14,7 +14,7 @@ export class AppComponent implements AfterViewInit {
     this.mundo = new Mundo()
     this.mundo.adicionarPlayer()
     // this.adicionarObjeto1()
-    // this.adicionarMonstro()
+    this.adicionarMonstro()
   }
 
   adicionarObjeto1() {
@@ -23,7 +23,7 @@ export class AppComponent implements AfterViewInit {
   }
 
   adicionarMonstro() {
-    const monstro = new Monstro(0, 0, 0)
+    const monstro = new Monstro(0, -5, 0)
     this.mundo.adicionarObjeto(monstro)
   }
 }

@@ -1,11 +1,8 @@
 
 import * as THREE from 'three';
-import { Posicao } from './posicao';
 import { Controle, ControlePlayer } from './controle';
 
 let selectionBox: THREE.LineSegments | null = null;
-
-
 
 export class Objeto {
     static idCounter = 0;
@@ -25,13 +22,13 @@ export class Objeto {
         // const geometry = new THREE.BoxGeometry();
         // const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         // this.mesh = new THREE.Mesh(geometry, material);
-        const geometry = new THREE.BoxGeometry();
-        const material = new THREE.MeshBasicMaterial({ color: '0x00ff00 ' });
-        const cube = new THREE.Mesh(geometry, material);
-        cube.position.x = this.x
-        cube.position.y = this.y
-        cube.position.z = this.z
-        this.mesh = cube;
+        // const geometry = new THREE.BoxGeometry();
+        // const material = new THREE.MeshBasicMaterial({ color: '0x00ff00 ' });
+        // const cube = new THREE.Mesh(geometry, material);
+        // cube.position.x = this.x
+        // cube.position.y = this.y
+        // cube.position.z = this.z
+        // this.mesh = cube;
     }
 
     destacarNaCena(scene: THREE.Scene) {
@@ -63,7 +60,7 @@ export class Piso extends Objeto {
 
     override createMesh() {
         const tileSize = 1;
-        const tileGeometry = new THREE.BoxGeometry(tileSize, 0.1, tileSize)
+        const tileGeometry = new THREE.BoxGeometry(tileSize, 1, tileSize)
         const tileMaterial = new THREE.MeshStandardMaterial({ color: this.cor });
         const tile = new THREE.Mesh(tileGeometry, tileMaterial);
         this.mesh = tile;
@@ -77,7 +74,7 @@ export class Player extends Objeto {
         super(x, z, y);
         this.controle = new ControlePlayer();
         this.createMesh();
-        this.bloqueia = false
+        this.bloqueia = true
     }
 
 

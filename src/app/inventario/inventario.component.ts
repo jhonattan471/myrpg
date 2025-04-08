@@ -1,21 +1,4 @@
-// import { CommonModule } from '@angular/common';
-// import { Component, inject } from '@angular/core';
-// import { InventarioService } from './inventario.service';
-
-// @Component({
-//   selector: 'app-inventario',
-//   imports: [
-//     CommonModule
-//   ],
-//   templateUrl: './inventario.component.html',
-//   styleUrl: './inventario.component.scss'
-// })
-// export class InventarioComponent {
-//   inventario = inject(InventarioService)
-
-//   constructor() { }
-// }
-import { Component, inject, Input } from '@angular/core';
+import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { InventarioService } from './inventario.service';
 
@@ -29,22 +12,30 @@ import { InventarioService } from './inventario.service';
 })
 export class InventarioComponent {
   @Input() inventario!: InventarioService;
-
-  outrosInventarios
-
-  onDragStart(event: DragEvent, index: number) {
-    event.dataTransfer?.setData('text/plain', index.toString());
-  }
+  @Output() itemDrop = new EventEmitter<{ from: string, fromIndex: number, to: string, toIndex: number }>();
 
   onDragOver(event: DragEvent) {
     event.preventDefault();
   }
 
+  onDragStart(event: DragEvent, index: number) {
+    event.dataTransfer?.setData('text/plain', JSON.stringify({
+      from: this.inventario.id,
+      index: index
+    }));
+  }
+
   onDrop(event: DragEvent, toIndex: number) {
     event.preventDefault();
-    const fromIndex = parseInt(event.dataTransfer?.getData('text/plain') || '-1');
-    if (fromIndex >= 0 && fromIndex !== toIndex) {
-      this.inventario.moverItem(fromIndex, toIndex);
+    const data = JSON.parse(event.dataTransfer?.getData('text/plain') || '{}');
+
+    if (data.index !== undefined && data.from !== undefined) {
+      this.itemDrop.emit({
+        from: data.from,
+        fromIndex: data.index,
+        to: this.inventario.id,
+        toIndex
+      });
     }
   }
 

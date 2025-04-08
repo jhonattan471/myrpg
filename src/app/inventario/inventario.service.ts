@@ -1,10 +1,17 @@
 import { Injectable } from "@angular/core";
 import { BehaviorSubject } from "rxjs";
 
+let inventarioCounter = 0;
+
 @Injectable()
 export class InventarioService {
     slots = new BehaviorSubject<(Item | null)[]>([]);
     maxSlots: number = 20;
+    id = ""
+
+    constructor() {
+        this.id = `inv-${inventarioCounter++}`;
+    }
 
     init(maxSlots: number) {
         this.maxSlots = maxSlots;

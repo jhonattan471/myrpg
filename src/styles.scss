@@ -19,42 +19,6 @@ canvas {
     margin-top: 10px;
 }
 
-.inventario-container {
-    position: absolute;
-    top: 100px;
-    left: 100px;
-    width: 175px;
-    height: 300px;
-    background-color: rgba(0, 0, 0, 0.7);
-    resize: vertical;
-    overflow-y: scroll;
-
-    .inventario-content {
-        display: flex;
-        flex-wrap: wrap;
-        overflow: auto;
-    }
-}
-
-.slot {
-    width: 40px;
-    height: 40px;
-    background-color: #222;
-    background-image: url('/slot-bg.png');
-    /* opcional */
-    background-size: cover;
-    position: relative;
-    margin: 0;
-    padding: 0
-}
-
-.slot img {
-    width: 32px;
-    height: 32px;
-    object-fit: contain;
-    pointer-events: none;
-}
-
 .center-flex {
     display: flex;
     align-items: center;

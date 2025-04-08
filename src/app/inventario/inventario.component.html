@@ -1,0 +1,15 @@
+<!-- <div class="inventario-container">
+    <div id="inventario" class="inventario-content">
+        <div *ngFor="let item of inventario.items$ |async" class="slot center-flex">
+
+        </div>
+    </div>
+</div> -->
+<div class="inventario-container">
+    <div id="inventario" class="inventario-content">
+        <div *ngFor="let item of inventario.slots | async; let i = index" class="slot center-flex" [attr.data-index]="i"
+            (drop)="onDrop($event, i)" (dragover)="onDragOver($event)">
+            <img *ngIf="item" [src]="item.icon" draggable="true" (dragstart)="onDragStart($event, i)" />
+        </div>
+    </div>
+</div>

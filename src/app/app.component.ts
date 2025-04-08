@@ -1,19 +1,27 @@
-import { AfterViewInit, Component } from '@angular/core';
+import { AfterViewInit, Component, inject } from '@angular/core';
 import { Mundo } from './models/mundo';
 import { Monstro, Objeto } from './models/objeto';
-import { Inventario } from './models/inventario.js';
+import { InventarioComponent } from "./inventario/inventario.component";
+import { InventarioService } from './inventario/inventario.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss']
+  styleUrls: ['./app.component.scss'],
+  imports: [InventarioComponent, CommonModule],
+  providers: [InventarioService]
 })
 export class AppComponent implements AfterViewInit {
 
   mundo!: Mundo
   divInventario
-  inventario = new Inventario(20);
+  meuInventario = inject(InventarioService)
 
+  inv1 = new InventarioService();
+  inv2 = new InventarioService();
+  inv3 = new InventarioService();
+  outrosInventarios: InventarioService[] = [this.inv1, this.inv2, this.inv3]
 
   ngAfterViewInit(): void {
     this.divInventario = document.getElementById('inventario') as any;
@@ -21,11 +29,12 @@ export class AppComponent implements AfterViewInit {
     this.mundo.adicionarPlayer()
     this.adicionarMonstro()
 
-    this.inventario.adicionarItem({ icon: `/gold.png` });
-    this.inventario.adicionarItem({ icon: `/pocao-vida.png` });
-    this.inventario.adicionarItem({ icon: `/pocao-mana.png` });
+    this.meuInventario.init(8)
+    this.meuInventario.adicionarItem({ icon: `/gold.png` });
+    this.meuInventario.adicionarItem({ icon: `/pocao-vida.png` });
+    this.meuInventario.adicionarItem({ icon: `/pocao-mana.png` });
 
-    this.renderInventario()
+    this.teste()
   }
 
   adicionarObjeto1() {
@@ -38,35 +47,9 @@ export class AppComponent implements AfterViewInit {
     this.mundo.adicionarObjeto(monstro)
   }
 
-  renderInventario() {
-    this.inventario.slots.forEach((item, index) => {
-      const slot = document.createElement('div');
-      slot.classList.add('slot');
-      slot.classList.add('center-flex');
-      slot.dataset['index'] = index + '';
-
-      if (item) {
-        const img = document.createElement('img');
-        img.src = item.icon; // `icon` é uma URL do item, defina no seu modelo
-        img.draggable = true;
-        img.ondragstart = e => {
-          e.dataTransfer?.setData("text/plain", index + '');
-        };
-        slot.appendChild(img);
-      }
-
-      slot.ondragover = e => e.preventDefault();
-      slot.ondrop = e => {
-        const fromIndex = parseInt(e.dataTransfer?.getData("text/plain") || '0');
-        const toIndex = parseInt(slot.dataset['index'] || '0');
-        this.inventario.moverItem(fromIndex, toIndex);
-        this.renderInventario();
-      };
-      console.log("!!")
-      console.log(slot, this.divInventario)
-
-      this.divInventario.appendChild(slot);
-
-    });
+  teste() {
+    this.inv1.init(2);
+    this.inv2.init(4);
+    this.inv3.init(6);
   }
 }

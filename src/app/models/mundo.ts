@@ -27,10 +27,15 @@ export class Mundo {
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.set(0, 10, 10);
 
+
+
+        const container = document.getElementById('world-container')
+
         this.renderer = new THREE.WebGLRenderer();
-        this.renderer.setSize(800, 600);
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(this.renderer.domElement);
+        // this.renderer.setSize(800, 600);
+        this.renderer.setSize(container?.clientWidth || 800, container?.clientHeight || 600);
+
+        container?.appendChild(this.renderer.domElement)
 
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 

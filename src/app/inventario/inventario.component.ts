@@ -1,17 +1,17 @@
 import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { InventarioService } from './inventario.service';
+import { Inventario } from '../models/inventario';
 
 @Component({
   selector: 'app-inventario',
   standalone: true,
   imports: [CommonModule],
-  providers: [InventarioService],
+  providers: [],
   templateUrl: './inventario.component.html',
   styleUrl: './inventario.component.scss'
 })
 export class InventarioComponent {
-  @Input() inventario!: InventarioService;
+  @Input() inventario!: Inventario;
   @Output() itemDrop = new EventEmitter<{ from: string, fromIndex: number, to: string, toIndex: number }>();
 
   onDragOver(event: DragEvent) {
@@ -38,5 +38,4 @@ export class InventarioComponent {
       });
     }
   }
-
 }

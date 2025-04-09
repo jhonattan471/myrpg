@@ -1,9 +1,9 @@
-<div style="display: flex;">
+<div style="display: flex;position: absolute;">
     <app-inventario [inventario]="meuInventario" (itemDrop)="onItemDrop($event)"></app-inventario>
-
-    <div style="display: flex;">
-        <div *ngFor="let inventario of outrosInventarios;">
-            <app-inventario [inventario]="inventario" (itemDrop)="onItemDrop($event)"></app-inventario>
+    <div style="display: flex;position: relative;">
+        <div *ngFor="let objeto of outrosObjetos">
+            <app-inventario *ngIf="objeto.inventario" [inventario]="objeto.inventario"
+                (itemDrop)="onItemDrop($event)"></app-inventario>
         </div>
     </div>
 </div>

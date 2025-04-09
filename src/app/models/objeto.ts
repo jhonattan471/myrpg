@@ -1,6 +1,7 @@
 
 import * as THREE from 'three';
 import { Controle, ControlePlayer } from './controle';
+import { Inventario } from './inventario';
 
 let selectionBox: THREE.LineSegments | null = null;
 
@@ -19,6 +20,7 @@ export class Objeto {
     velocidadeDeAtaque
     podeAtacar = true
     morto = false
+    inventario?: Inventario
 
     constructor(public x = 0, public z = 0, public y = 0) {
         this.id = Objeto.idCounter++;
@@ -115,13 +117,7 @@ export class Objeto {
     }
 
     gerarObjetoMorto() {
-        let objeto = new Objeto(this.x, this.z, this.y - .25)
-        const geometry = new THREE.BoxGeometry(.5, .5, .5);
-        const material = new THREE.MeshBasicMaterial({ color: 'red' });
-        const deadMesh = new THREE.Mesh(geometry, material);
-        objeto.bloqueia = false
-        objeto.mesh = deadMesh;
-
+        let objeto = new MonstroMorto(this.x, this.z, this.y - .25)
         return objeto
     }
 }
@@ -161,7 +157,6 @@ export class Player extends Objeto {
 }
 export class Monstro extends Objeto {
     cor = 'yellow';
-    ;
 
     constructor(x = 0, z = 0, y = 0) {
         super(x, z, y);
@@ -175,6 +170,29 @@ export class Monstro extends Objeto {
         const geometry = new THREE.BoxGeometry(this.tamanho, this.tamanho, this.tamanho);
         const material = new THREE.MeshBasicMaterial({ color: 'yellow' });
         this.mesh = new THREE.Mesh(geometry, material);
+    }
+}
+
+export class MonstroMorto extends Objeto {
+    constructor(x = 0, z = 0, y = 0) {
+        super(x, z, y);
+        this.controle = new ControlePlayer();
+        this.health = 10
+        this.createMesh();
+        this.bloqueia = false
+    }
+
+    override createMesh() {
+        const geometry = new THREE.BoxGeometry(.5, .5, .5);
+        const material = new THREE.MeshBasicMaterial({ color: 'red' });
+        const deadMesh = new THREE.Mesh(geometry, material);
+        this.mesh = deadMesh;
+        this.inventario = new Inventario()
+        this.bloqueia = false
+        const qtdGold = Math.ceil(Math.random() * 5)
+        for (let i = 0; i < qtdGold; i++) {
+            this.inventario.adicionarItem({ icon: '/gold.png' })
+        }
     }
 }
 

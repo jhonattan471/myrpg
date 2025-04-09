@@ -1,21 +1,14 @@
-import { Injectable } from "@angular/core";
 import { BehaviorSubject } from "rxjs";
 
 let inventarioCounter = 0;
 
-@Injectable()
-export class InventarioService {
+export class Inventario {
     slots = new BehaviorSubject<(Item | null)[]>([]);
-    maxSlots: number = 20;
     id = ""
 
-    constructor() {
+    constructor(qtdSlots = 20) {
+        this.slots.next(Array(qtdSlots).fill(null));
         this.id = `inv-${inventarioCounter++}`;
-    }
-
-    init(maxSlots: number) {
-        this.maxSlots = maxSlots;
-        this.slots.next(Array(this.maxSlots).fill(null));
     }
 
     adicionarItem(item: { icon: string }): boolean {
@@ -25,12 +18,6 @@ export class InventarioService {
             return true;
         }
         return false;
-    }
-
-    moverItem(origem: number, destino: number) {
-        const temp = this.slots.value[destino];
-        this.slots.value[destino] = this.slots.value[origem];
-        this.slots.value[origem] = temp;
     }
 }
 

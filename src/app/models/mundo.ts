@@ -1,3 +1,4 @@
+import { InventariosComponent } from "../inventarios/inventarios.component";
 import { NotPossibleError } from "./errors";
 import { Monstro, Objeto, Piso, Player } from "./objeto";
 import { Posicao } from "./posicao";
@@ -11,10 +12,10 @@ export class Mundo {
     controls!: OrbitControls
     keys = {}
     player = new Player()
-    tamanho = 10
+    tamanho = 100
     mapa: Posicao[][] = []
 
-    constructor() {
+    constructor(public inventarios: InventariosComponent) {
         this.initScene();
         this.adicionarRaycastSelecao()
     }
@@ -27,13 +28,11 @@ export class Mundo {
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.set(0, 10, 10);
 
-
-
         const container = document.getElementById('world-container')
 
         this.renderer = new THREE.WebGLRenderer();
         // this.renderer.setSize(800, 600);
-        this.renderer.setSize(container?.clientWidth || 800, container?.clientHeight || 600);
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
 
         container?.appendChild(this.renderer.domElement)
 
@@ -185,6 +184,9 @@ export class Mundo {
                     e.destacarNaCena(this.scene);
                     this.player.controle.objetoSelecionado = e
                 }
+                if (e.inventario) {
+                    this.inventarios.adicionarObjeto(e)
+                }
             })
 
             console.log('objetosSelecionados', objetosSelecionados)
@@ -209,6 +211,7 @@ export class Mundo {
                 posicao.objetos = posicao.objetos.filter(e => !e.morto)
             }
         }
+        this.fecharInventariosIndisponiveis()
         this.gerenciarAtaques()
         this.controls.update();
         // atualizar câmera
@@ -235,6 +238,22 @@ export class Mundo {
         let newObjeto = objeto.gerarObjetoMorto()
         this.scene.remove(objeto.mesh)
         this.adicionarObjeto(newObjeto)
+    }
+
+    fecharInventariosIndisponiveis() {
+        for (let objeto of this.inventarios.outrosObjetos) {
+            const distancia = this.calcularDistancia(this.player, objeto)
+            console.log(distancia)
+            if (distancia > 1.9) {
+                this.inventarios.outrosObjetos = this.inventarios.outrosObjetos.filter(e => e.id != objeto.id)
+            }
+        }
+    }
+
+    calcularDistancia(targert, alvo: Objeto): number {
+        const dx = targert.x - alvo.x;
+        const dz = targert.z - alvo.z;
+        return Math.sqrt(dx * dx + dz * dz);
     }
 }
 

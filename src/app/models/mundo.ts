@@ -1,6 +1,7 @@
+import { interval, Subject, throttle, throttleTime } from "rxjs";
 import { InventariosComponent } from "../inventarios/inventarios.component";
 import { NotPossibleError } from "./errors";
-import { Monstro, Objeto, Piso, Player } from "./objeto";
+import { Monstro, MonstroMorto, Objeto, Piso, Player } from "./objeto";
 import { Posicao } from "./posicao";
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -14,6 +15,7 @@ export class Mundo {
     player = new Player()
     tamanho = 100
     mapa: Posicao[][] = []
+    atualizar$ = new Subject()
 
     constructor(public inventarios: InventariosComponent) {
         this.initScene();
@@ -23,7 +25,6 @@ export class Mundo {
     private initScene(): void {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x87ceeb);
-
 
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.set(0, 10, 10);
@@ -50,6 +51,18 @@ export class Mundo {
         });
         this.gerarChaoGrid()
         this.animate()
+
+        interval(70).subscribe(() => {
+            for (let row of this.mapa) {
+                for (let posicao of row) {
+                    for (let objeto of posicao.objetos) {
+                        if (objeto instanceof Piso) continue
+                        if (objeto instanceof MonstroMorto) continue
+                        this.updateHealthBar(objeto);
+                    }
+                }
+            }
+        });
     }
 
     gerarChaoGrid() {
@@ -77,8 +90,8 @@ export class Mundo {
         return objeto.mesh;
     }
 
-    adicionarPlayer() {
-        this.player = new Player(5, 5, 0)
+    adicionarPlayer(mesh) {
+        this.player = new Player(5, 5, 0, mesh)
         if (this.posicaoEstaDisponivel(this.player.mesh.position.x, this.player.mesh.position.z)) {
             throw new NotPossibleError();
         }
@@ -134,10 +147,8 @@ export class Mundo {
 
         const novoX = objeto.mesh.position.x + stepX;
         const novoZ = objeto.mesh.position.z + stepZ;
-        console.log(novoX, novoZ)
         const disponivel = this.posicaoEstaDisponivel(novoX, novoZ);
 
-        console.log('disponivel', disponivel);
         if (disponivel) return console.log("posição indisponível.");
 
         let currentTile = this.mapa[objeto.mesh.position.x][objeto.mesh.position.z];
@@ -148,7 +159,8 @@ export class Mundo {
         nextTile.objetos.push(objeto);
         objeto.mesh.position.x = novoX;
         objeto.mesh.position.z = novoZ;
-
+        const anguloRotacao = Math.atan2(input.x, input.z);
+        objeto.mesh.rotation.y = anguloRotacao;
         this.ultimoMovimento = agora;
     }
 
@@ -229,12 +241,15 @@ export class Mundo {
         }
         this.fecharInventariosIndisponiveis()
         this.gerenciarAtaques()
+
         this.controls.update();
 
-        this.camera.position.x = this.player.mesh.position.x + 0;
-        this.camera.position.z = this.player.mesh.position.z + 10;
-        this.camera.position.y = this.player.mesh.position.y + 20;
-        this.camera.lookAt(this.player.mesh.position);
+        if (this.player.mesh) {
+            this.camera.position.x = this.player.mesh.position.x + 0;
+            this.camera.position.z = this.player.mesh.position.z + 10;
+            this.camera.position.y = this.player.mesh.position.y + 10;
+            this.camera.lookAt(this.player.mesh.position);
+        }
 
         this.renderer.render(this.scene, this.camera);
     }
@@ -270,6 +285,26 @@ export class Mundo {
         const dx = targert.x - alvo.x;
         const dz = targert.z - alvo.z;
         return Math.sqrt(dx * dx + dz * dz);
+    }
+
+    updateHealthBar(objeto: Objeto) {
+        const pos = objeto.mesh.position.clone();
+        pos.y += 1.5; // altura acima da cabeça
+
+        const vector = pos.project(this.camera); // projeta no espaço de tela
+
+        const widthHalf = this.renderer.domElement.clientWidth / 2;
+        const heightHalf = this.renderer.domElement.clientHeight / 2;
+
+        const screenX = vector.x * widthHalf + widthHalf;
+        const screenY = -vector.y * heightHalf + heightHalf;
+
+        objeto.healthBarElement.style.left = `${screenX - 20}px`;
+        objeto.healthBarElement.style.top = `${screenY}px`;
+        objeto.healthBarElement.style.display = 'block';
+
+        const percent = objeto.health / objeto.maxHealth;
+        (objeto.healthBarElement.querySelector('.fill') as HTMLDivElement).style.width = `${percent * 100}%`;
     }
 }
 

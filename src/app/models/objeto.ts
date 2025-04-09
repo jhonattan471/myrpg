@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { Controle, ControlePlayer } from './controle';
 import { Inventario } from './inventario';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 let selectionBox: THREE.LineSegments | null = null;
 
@@ -9,10 +10,11 @@ export class Objeto {
     static idCounter = 0;
     id: number;
     tamanho = 1;
-    mesh!: THREE.Mesh;
+    mesh!: any;
     speed = 0.02;
     controle = new Controle()
     health = 100;
+    maxHealth = 100;
     bloqueia = false
     forca = 10
     distanciaAtaque = 1
@@ -21,9 +23,15 @@ export class Objeto {
     podeAtacar = true
     morto = false
     inventario?: Inventario
+    healthBarElement
 
     constructor(public x = 0, public z = 0, public y = 0) {
         this.id = Objeto.idCounter++;
+
+        this.healthBarElement = document.createElement('div');
+        this.healthBarElement.className = 'health-bar';
+        this.healthBarElement.innerHTML = '<div class="fill"></div>';
+        document.body.appendChild(this.healthBarElement);
     }
 
     createMesh() {
@@ -87,7 +95,7 @@ export class Objeto {
     receberDano(quantidade) {
         console.log("💥 DANO RECEBIDO", this, quantidade)
         this.health -= quantidade;
-        if (this.health < 0) {
+        if (this.health <= 0) {
             this.morrer()
         }
     }
@@ -99,6 +107,7 @@ export class Objeto {
     }
 
     morrer() {
+        this.healthBarElement.remove()
         console.log("✝ MORREU", this)
         this.mesh.material = new THREE.MeshBasicMaterial({ color: 0x555555 });
         this.morto = true
@@ -140,19 +149,31 @@ export class Piso extends Objeto {
 export class Player extends Objeto {
     cor = 'blue';
 
-    constructor(x = 0, z = 0, y = 0) {
+    constructor(x = 0, z = 0, y = 0, mesh?) {
         super(x, z, y);
         this.controle = new ControlePlayer();
-        this.createMesh();
+        if (mesh) {
+            this.mesh = mesh
+        } else {
+            this.createMesh();
+        }
         this.bloqueia = true
     }
 
 
     override createMesh() {
-        const geometry = new THREE.BoxGeometry(this.tamanho, this.tamanho, this.tamanho);
-        const material = new THREE.MeshBasicMaterial({ color: this.cor });
-        console.log("❤", this, this.cor)
-        this.mesh = new THREE.Mesh(geometry, material);
+        const loader = new GLTFLoader();
+        loader.load('/knight.glb', (gltf) => {
+            const modelo = gltf.scene;
+            modelo.scale.set(0.5, 0.5, 0.5); // ajuste se necessário
+
+            const wrapper = new THREE.Object3D();
+            wrapper.add(modelo);
+            wrapper.scale.set(0.5, 0.5, 0.5); // ou aplique no modelo se preferir
+
+            this.mesh = wrapper;
+            console.log('this.mesh', this.mesh)
+        });
     }
 }
 export class Monstro extends Objeto {
@@ -161,7 +182,7 @@ export class Monstro extends Objeto {
     constructor(x = 0, z = 0, y = 0) {
         super(x, z, y);
         this.controle = new ControlePlayer();
-        this.health = 10
+        this.health = 100
         this.createMesh();
         this.bloqueia = true
     }

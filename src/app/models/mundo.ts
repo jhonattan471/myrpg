@@ -110,32 +110,48 @@ export class Mundo {
     movimentarObjeto(objeto: Objeto) {
         const agora = performance.now();
         if (agora - this.ultimoMovimento < this.intervalo) return;
-        let dx = 0, dz = 0;
-        if (objeto.controle.keys['w']) dz -= 1;
-        if (objeto.controle.keys['s']) dz += 1;
-        if (objeto.controle.keys['a']) dx -= 1;
-        if (objeto.controle.keys['d']) dx += 1;
 
-        if (dx === 0 && dz === 0) return;
-        const novoX = objeto.mesh.position.x + dx;
-        const novoZ = objeto.mesh.position.z + dz;
+        const input = new THREE.Vector3();
+        if (objeto.controle.keys['w']) input.z += 1;
+        if (objeto.controle.keys['s']) input.z -= 1;
+        if (objeto.controle.keys['a']) input.x += 1;
+        if (objeto.controle.keys['d']) input.x -= 1;
 
+        if (input.length() === 0) return;
+
+        input.normalize();
+
+        const cameraDirection = new THREE.Vector3();
+        this.camera.getWorldDirection(cameraDirection);
+        cameraDirection.y = 0;
+        cameraDirection.normalize();
+
+        const angle = Math.atan2(cameraDirection.x, cameraDirection.z);
+        input.applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+
+        const stepX = Math.round(input.x);
+        const stepZ = Math.round(input.z);
+
+        const novoX = objeto.mesh.position.x + stepX;
+        const novoZ = objeto.mesh.position.z + stepZ;
+        console.log(novoX, novoZ)
         const disponivel = this.posicaoEstaDisponivel(novoX, novoZ);
 
-        console.log('disponivel', disponivel)
+        console.log('disponivel', disponivel);
         if (disponivel) return console.log("posição indisponível.");
 
+        let currentTile = this.mapa[objeto.mesh.position.x][objeto.mesh.position.z];
+        let nextTile = this.mapa[novoX][novoZ];
+        console.log('currentTile', currentTile, 'nextTile', nextTile);
 
-        let currentTile = this.mapa[objeto.mesh.position.x][objeto.mesh.position.z]
-        let nextTile = this.mapa[novoX][novoZ]
-        console.log('currentTile', currentTile, 'nextTile', nextTile)
-        currentTile.objetos = currentTile.objetos.filter(e => e.id != objeto.id)
-        nextTile.objetos.push(objeto)
-        objeto.mesh.position.x = novoX
-        objeto.mesh.position.z = novoZ
+        currentTile.objetos = currentTile.objetos.filter(e => e.id != objeto.id);
+        nextTile.objetos.push(objeto);
+        objeto.mesh.position.x = novoX;
+        objeto.mesh.position.z = novoZ;
 
         this.ultimoMovimento = agora;
     }
+
 
     renderTile(posicao: Posicao) {
         for (let objeto of posicao.objetos) {
@@ -214,11 +230,11 @@ export class Mundo {
         this.fecharInventariosIndisponiveis()
         this.gerenciarAtaques()
         this.controls.update();
-        // atualizar câmera
-        // this.camera.position.x = this.player.mesh.position.x + 0;
-        // this.camera.position.z = this.player.mesh.position.z + 10;
-        // this.camera.position.y = this.player.mesh.position.y + 20;
-        // this.camera.lookAt(this.player.mesh.position);
+
+        this.camera.position.x = this.player.mesh.position.x + 0;
+        this.camera.position.z = this.player.mesh.position.z + 10;
+        this.camera.position.y = this.player.mesh.position.y + 20;
+        this.camera.lookAt(this.player.mesh.position);
 
         this.renderer.render(this.scene, this.camera);
     }

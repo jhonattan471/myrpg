@@ -1,6 +1,6 @@
 
 import * as THREE from 'three';
-import { Controle, ControlePlayer } from './controle';
+import { Controle, ControleIA, ControlePlayer } from './controle';
 import { Inventario } from './inventario';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
@@ -24,10 +24,13 @@ export class Objeto {
     morto = false
     inventario?: Inventario
     healthBarElement
+    spawnPoint
+    distanceAllowedFromSpawn = 10
+    ultimoMovimento = 0
 
     constructor(public x = 0, public z = 0, public y = 0) {
         this.id = Objeto.idCounter++;
-
+        this.spawnPoint = { x, y, z }
         this.healthBarElement = document.createElement('div');
         this.healthBarElement.className = 'health-bar';
         this.healthBarElement.innerHTML = '<div class="fill"></div>';
@@ -69,12 +72,10 @@ export class Objeto {
 
     atacar(alvo: Objeto) {
         try {
-            console.log("tentnado ataque")
             this.podeAtacar = false
             const dano = this.calcular_dano(alvo)
             const distancia = this.calcularDistancia(alvo)
             if (distancia > this.distanciaAtaque) return console.log("tentnado ataque", distancia, this.distanciaAtaque, this, alvo)
-            console.log(this, "atacando", alvo, 'distancia', distancia, 'this.distanciaAtaque', this.distanciaAtaque)
             alvo.receberDano(dano)
             if (alvo.morto) {
                 this.controle.objetoSelecionado = undefined
@@ -101,9 +102,9 @@ export class Objeto {
     }
 
     calcularDistancia(alvo: Objeto): number {
-        const dx = this.x - alvo.x;
-        const dy = this.y - alvo.y;
-        return Math.sqrt(dx * dx + dy * dy);
+        const dx = Math.abs(this.x - alvo.x);
+        const dz = Math.abs(this.z - alvo.z);
+        return Math.max(dx, dz);
     }
 
     morrer() {
@@ -160,31 +161,35 @@ export class Player extends Objeto {
         this.bloqueia = true
     }
 
+    // override createMesh() {
+    //     const loader = new GLTFLoader();
+    //     loader.load('/knight.glb', (gltf) => {
+    //         const modelo = gltf.scene;
+    //         modelo.scale.set(0.5, 0.5, 0.5); // ajuste se necessário
 
-    override createMesh() {
-        const loader = new GLTFLoader();
-        loader.load('/knight.glb', (gltf) => {
-            const modelo = gltf.scene;
-            modelo.scale.set(0.5, 0.5, 0.5); // ajuste se necessário
+    //         const wrapper = new THREE.Object3D();
+    //         wrapper.add(modelo);
+    //         wrapper.scale.set(0.5, 0.5, 0.5); // ou aplique no modelo se preferir
 
-            const wrapper = new THREE.Object3D();
-            wrapper.add(modelo);
-            wrapper.scale.set(0.5, 0.5, 0.5); // ou aplique no modelo se preferir
-
-            this.mesh = wrapper;
-            console.log('this.mesh', this.mesh)
-        });
-    }
+    //         this.mesh = wrapper;
+    //         console.log('this.mesh', this.mesh)
+    //     });
+    // }
 }
 export class Monstro extends Objeto {
     cor = 'yellow';
 
-    constructor(x = 0, z = 0, y = 0) {
+    constructor(x = 0, z = 0, y = 0, mundo, mesh?) {
         super(x, z, y);
-        this.controle = new ControlePlayer();
+        this.controle = new ControleIA(this, mundo);
         this.health = 100
-        this.createMesh();
         this.bloqueia = true
+        if (mesh) {
+            this.mesh = mesh
+            this.mesh['_myid'] = this.id
+        } else {
+            this.createMesh();
+        }
     }
 
     override createMesh() {
@@ -197,7 +202,7 @@ export class Monstro extends Objeto {
 export class MonstroMorto extends Objeto {
     constructor(x = 0, z = 0, y = 0) {
         super(x, z, y);
-        this.controle = new ControlePlayer();
+        this.controle = new Controle();
         this.health = 10
         this.createMesh();
         this.bloqueia = false

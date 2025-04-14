@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { InventariosComponent } from "./inventarios/inventarios.component";
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { interval } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -22,25 +23,38 @@ export class AppComponent implements AfterViewInit {
     const playerMesh = await this.carregarMesh('/knight.glb')
     this.mundo = new Mundo(this.inventarioComponent)
     this.mundo.adicionarPlayer(playerMesh)
-    this.adicionarMonstro()
+    this.spawnRabit()
+    console.log(this.mundo.mapa)
+  }
+
+  async spawnRabit() {
+    const ratMesh = await this.carregarMesh('/rat.glb', 0.1, 0.1, 0.1)
+    interval(1000).subscribe(r => {
+      if (this.mundo.objetos.filter(e => e instanceof Monstro).length > 0) return
+      let pos = this.getPosicaoAleatoriaDentroDoAlcance({ x: 5, z: 5 }, 5)
+      // const monstro = new Monstro(pos.x, pos.z, 0, this.mundo, ratMesh)
+      const monstro = new Monstro(0, 0, 0, this.mundo, ratMesh)
+      this.mundo.adicionarObjeto(monstro)
+    })
+    console.log(this.mundo.mapa)
   }
 
   adicionarObjeto1() {
-    const objeto = new Objeto(0, 0, -5)
+    const objeto = new Objeto(0, 0, 10)
     this.mundo.adicionarObjeto(objeto)
   }
 
   adicionarMonstro() {
-    const monstro = new Monstro(0, -5, 0)
+    const monstro = new Monstro(3, 3, 0, this.mundo)
     this.mundo.adicionarObjeto(monstro)
   }
 
-  async carregarMesh(path) {
+  async carregarMesh(path, scaleX = 0.5, scaleZ = 0.5, scaleY = 0.5) {
     return new Promise((resolve) => {
       const loader = new GLTFLoader();
       loader.load(path, (gltf) => {
         const modelo = gltf.scene;
-        modelo.scale.set(0.5, 0.5, 0.5); // ajuste se necessário
+        modelo.scale.set(scaleX, scaleZ, scaleY); // ajuste se necessário
 
         const wrapper = new THREE.Object3D();
         wrapper.add(modelo);
@@ -49,5 +63,27 @@ export class AppComponent implements AfterViewInit {
         resolve(wrapper)
       });
     })
+  }
+
+  getPosicaoAleatoriaDentroDoAlcance(
+    origem: { x: number; z: number },
+    distanciaMax: number
+  ): { x: number; z: number } {
+    const opcoes: { x: number; z: number }[] = [];
+
+    for (let dx = -distanciaMax; dx <= distanciaMax; dx++) {
+      for (let dz = -distanciaMax; dz <= distanciaMax; dz++) {
+        const chebyshev = Math.max(Math.abs(dx), Math.abs(dz));
+        if (chebyshev <= distanciaMax) {
+          opcoes.push({ x: origem.x + dx, z: origem.z + dz });
+        }
+      }
+    }
+
+    // Remove a posição original se não quiser incluir ela
+    const opcoesSemOrigem = opcoes.filter(p => !(p.x === origem.x && p.z === origem.z));
+
+    // Escolhe aleatoriamente
+    return opcoesSemOrigem[Math.floor(Math.random() * opcoesSemOrigem.length)];
   }
 }

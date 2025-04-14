@@ -5,6 +5,7 @@ import { Monstro, MonstroMorto, Objeto, Piso, Player } from "./objeto";
 import { Posicao } from "./posicao";
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { instance } from "three/src/nodes/TSL.js";
 
 export class Mundo {
     scene!: THREE.Scene
@@ -27,7 +28,7 @@ export class Mundo {
         this.scene.background = new THREE.Color(0x87ceeb);
 
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        this.camera.position.set(0, 10, 10);
+        this.camera.position.set(0, 0, 10);
 
         const container = document.getElementById('world-container')
 
@@ -63,6 +64,9 @@ export class Mundo {
                 }
             }
         });
+
+        // console.log()
+
     }
 
     gerarChaoGrid() {
@@ -78,21 +82,21 @@ export class Mundo {
             }
             this.mapa[x].push(...linha)
         }
-        console.log('mapa', this.mapa)
     }
 
     adicionarObjeto(objeto: Objeto = new Objeto()): THREE.Mesh {
-        if (objeto.bloqueia && this.posicaoEstaDisponivel(objeto.mesh.position.x, objeto.mesh.position.z)) {
+        if (objeto.bloqueia && this.posicaoEstaIndisponivel(objeto.mesh.position.x, objeto.mesh.position.z)) {
             throw new NotPossibleError();
         }
-        this.mapa[objeto.mesh.position.x][objeto.mesh.position.z].objetos.push(objeto)
+        this.mapa[objeto.x][objeto.z].objetos.push(objeto)
         this.scene.add(objeto.mesh);
         return objeto.mesh;
     }
 
     adicionarPlayer(mesh) {
-        this.player = new Player(5, 5, 0, mesh)
-        if (this.posicaoEstaDisponivel(this.player.mesh.position.x, this.player.mesh.position.z)) {
+        this.player = new Player(4, 4, 0, mesh)
+
+        if (this.posicaoEstaIndisponivel(this.player.mesh.position.x, this.player.mesh.position.z)) {
             throw new NotPossibleError();
         }
 
@@ -101,14 +105,18 @@ export class Mundo {
     }
 
     movimentoEstaDisponivel(objeto: Objeto, x, z) {
-        if (this.posicaoEstaDisponivel(x, z)) {
+        if (this.posicaoEstaIndisponivel(x, z)) {
             throw new NotPossibleError();
         }
     }
 
-    posicaoEstaDisponivel(x, z) {
-        let tile = this.mapa[x][z]
-        console.log(tile.objetos)
+    posicaoEstaIndisponivel(x, z) {
+        let tile
+        if (x >= 0 && z >= 0 && x < this.mapa.length && z < this.mapa[x].length) {
+            tile = this.mapa[x][z];
+        }
+        if (!tile) return true
+        tile = this.mapa[x][z]
         const bloqueada = tile.objetos.filter(e => e.bloqueia == true).length
         return bloqueada;
     }
@@ -117,12 +125,11 @@ export class Mundo {
         return this.scene;
     }
 
-    ultimoMovimento = 0;
-    intervalo = 200; // milissegundos (0.2s entre movimentos)
+    intervalo = 1000; // milissegundos (0.2s entre movimentos)
 
     movimentarObjeto(objeto: Objeto) {
         const agora = performance.now();
-        if (agora - this.ultimoMovimento < this.intervalo) return;
+        if (agora - objeto.ultimoMovimento < this.intervalo) return;
 
         const input = new THREE.Vector3();
         if (objeto.controle.keys['w']) input.z += 1;
@@ -147,13 +154,12 @@ export class Mundo {
 
         const novoX = objeto.mesh.position.x + stepX;
         const novoZ = objeto.mesh.position.z + stepZ;
-        const disponivel = this.posicaoEstaDisponivel(novoX, novoZ);
+        const disponivel = this.posicaoEstaIndisponivel(novoX, novoZ);
 
         if (disponivel) return console.log("posição indisponível.");
 
         let currentTile = this.mapa[objeto.mesh.position.x][objeto.mesh.position.z];
         let nextTile = this.mapa[novoX][novoZ];
-        console.log('currentTile', currentTile, 'nextTile', nextTile);
 
         currentTile.objetos = currentTile.objetos.filter(e => e.id != objeto.id);
         nextTile.objetos.push(objeto);
@@ -161,9 +167,8 @@ export class Mundo {
         objeto.mesh.position.z = novoZ;
         const anguloRotacao = Math.atan2(input.x, input.z);
         objeto.mesh.rotation.y = anguloRotacao;
-        this.ultimoMovimento = agora;
+        objeto.ultimoMovimento = agora;
     }
-
 
     renderTile(posicao: Posicao) {
         for (let objeto of posicao.objetos) {
@@ -185,74 +190,7 @@ export class Mundo {
         return todosObjetos;
     }
 
-    adicionarRaycastSelecao() {
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
 
-        this.renderer.domElement.addEventListener('click', (event: MouseEvent) => {
-            const rect = this.renderer.domElement.getBoundingClientRect();
-            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-            raycaster.setFromCamera(mouse, this.camera);
-            const meshes = this.objetos.map(obj => obj.mesh);
-            const intersects = raycaster.intersectObjects(meshes);
-
-            let objetosSelecionados: Objeto[] = []
-
-            for (let meshAtravessado of intersects) {
-                const objetoCorrespondente = this.objetos.find(obj => obj.mesh === meshAtravessado.object);
-                if (objetoCorrespondente) {
-                    objetosSelecionados.push(objetoCorrespondente)
-                }
-            }
-
-            objetosSelecionados.forEach(e => {
-                if (e instanceof Monstro) {
-                    e.destacarNaCena(this.scene);
-                    this.player.controle.objetoSelecionado = e
-                }
-                if (e.inventario) {
-                    this.inventarios.adicionarObjeto(e)
-                }
-            })
-
-            console.log('objetosSelecionados', objetosSelecionados)
-        });
-    }
-
-    animate(): void {
-        requestAnimationFrame(() => this.animate());
-        for (let row of this.mapa) {
-            for (let posicao of row) {
-                for (let objeto of posicao.objetos) {
-                    if (objeto instanceof Player) {
-                        this.movimentarObjeto(objeto)
-                    }
-                    objeto.mesh.position.x = posicao.x
-                    objeto.mesh.position.z = posicao.z
-                    objeto.mesh.position.y = objeto.y
-                    objeto.x = posicao.x
-                    objeto.z = posicao.z
-                    this.gerarMorte(objeto)
-                }
-                posicao.objetos = posicao.objetos.filter(e => !e.morto)
-            }
-        }
-        this.fecharInventariosIndisponiveis()
-        this.gerenciarAtaques()
-
-        this.controls.update();
-
-        if (this.player.mesh) {
-            this.camera.position.x = this.player.mesh.position.x + 0;
-            this.camera.position.z = this.player.mesh.position.z + 10;
-            this.camera.position.y = this.player.mesh.position.y + 10;
-            this.camera.lookAt(this.player.mesh.position);
-        }
-
-        this.renderer.render(this.scene, this.camera);
-    }
 
     gerenciarAtaques() {
         if (!this.player.podeAtacar) return
@@ -274,17 +212,16 @@ export class Mundo {
     fecharInventariosIndisponiveis() {
         for (let objeto of this.inventarios.outrosObjetos) {
             const distancia = this.calcularDistancia(this.player, objeto)
-            console.log(distancia)
             if (distancia > 1.9) {
                 this.inventarios.outrosObjetos = this.inventarios.outrosObjetos.filter(e => e.id != objeto.id)
             }
         }
     }
 
-    calcularDistancia(targert, alvo: Objeto): number {
-        const dx = targert.x - alvo.x;
-        const dz = targert.z - alvo.z;
-        return Math.sqrt(dx * dx + dz * dz);
+    calcularDistancia(target: { x: number; z: number }, alvo: { x: number; z: number }): number {
+        const dx = Math.abs(target.x - alvo.x);
+        const dz = Math.abs(target.z - alvo.z);
+        return Math.max(dx, dz);
     }
 
     updateHealthBar(objeto: Objeto) {
@@ -306,5 +243,104 @@ export class Mundo {
         const percent = objeto.health / objeto.maxHealth;
         (objeto.healthBarElement.querySelector('.fill') as HTMLDivElement).style.width = `${percent * 100}%`;
     }
+
+    ultimaUI = 0;
+    atualizarControleUI(agora: number) {
+        if (agora - this.ultimaUI > 200) { // executa a cada 200ms
+            this.fecharInventariosIndisponiveis();
+            this.gerenciarAtaques();
+            this.ultimaUI = agora;
+        }
+    }
+
+    adicionarRaycastSelecao() {
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        this.renderer.domElement.addEventListener('click', (event: MouseEvent) => {
+            const rect = this.renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, this.camera);
+            const meshes = this.objetos.map(obj => obj.mesh);
+            const intersects = raycaster.intersectObjects(meshes);
+
+            let objetosSelecionados: Objeto[] = []
+
+            for (let meshAtravessado of intersects) {
+
+                const objetoCorrespondente = this.objetos.find(obj => obj.mesh === meshAtravessado.object);
+                if (objetoCorrespondente) {
+                    objetosSelecionados.push(objetoCorrespondente)
+                }
+            }
+
+            objetosSelecionados.forEach(e => {
+                if (e instanceof Monstro) {
+                    this.player.controle.objetoSelecionado = e
+                }
+                if (e.inventario) {
+                    this.inventarios.adicionarObjeto(e)
+                }
+            })
+
+            let pisoSelecionado = objetosSelecionados.find(e => e instanceof Piso)
+            if (!pisoSelecionado) return
+            let posicaoSelecionado = this.mapa[pisoSelecionado.x][pisoSelecionado.z]
+            this.player.controle.objetoSelecionado = posicaoSelecionado.objetos.find(e => e instanceof Monstro)
+
+
+            console.log('intersects', intersects)
+            console.log('objetos != piso', this.objetos.filter(e => (e instanceof Piso) == false))
+            console.log('objetosSelecionados', objetosSelecionados)
+            console.log(this.mapa)
+
+
+
+
+        });
+    }
+
+    animate(): void {
+        requestAnimationFrame(() => this.animate());
+
+        const agora = performance.now();
+
+        for (let row of this.mapa) {
+            for (let posicao of row) {
+                for (let objeto of posicao.objetos) {
+
+                    if (objeto instanceof Piso || objeto instanceof MonstroMorto) {
+
+                    } else {
+                        this.movimentarObjeto(objeto)
+                    }
+                    objeto.mesh.position.x = posicao.x
+                    objeto.mesh.position.z = posicao.z
+                    objeto.mesh.position.y = objeto.y
+                    objeto.x = posicao.x
+                    objeto.z = posicao.z
+                    this.gerarMorte(objeto)
+                }
+                posicao.objetos = posicao.objetos.filter(e => !e.morto)
+            }
+        }
+
+        this.player.controle.objetoSelecionado?.destacarNaCena(this.scene)
+        this.controls.update();
+
+        if (this.player.mesh) {
+            // this.camera.position.x = this.player.mesh.position.x + 0;
+            // this.camera.position.z = this.player.mesh.position.z + 10;
+            // this.camera.position.y = this.player.mesh.position.y + 10;
+            // this.camera.lookAt(this.player.mesh.position);
+        }
+        this.atualizarControleUI(agora)
+
+        this.renderer.render(this.scene, this.camera);
+    }
+
+
 }
 
